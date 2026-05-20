@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Smart Card — Sandbox</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root {
+  --blue: #007AFF; --green: #34C759; --red: #FF3B30; --orange: #FF9500;
+  --bg: #F2F2F7; --card-bg: #FFFFFF; --text: #000; --text2: #6E6E73;
+  --border: #E5E5EA; --radius: 16px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #1C1C1E; --card-bg: #2C2C2E; --text: #FFF; --text2: #8E8E93; --border: #3A3A3C; }
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  background: var(--bg); color: var(--text);
+  max-width: 430px; margin: 0 auto; min-height: 100vh;
+}
+
+/* ── Auth ── */
+.screen { display: none; min-height: 100vh; flex-direction: column; }
+.screen.active { display: flex; }
+#auth-screen { background: var(--bg); justify-content: center; align-items: center; padding: 32px 24px; }
+.auth-logo { text-align: center; margin-bottom: 48px; }
+.auth-logo svg { width: 72px; height: 72px; margin-bottom: 16px; }
+.auth-logo h1 { font-size: 32px; font-weight: 700; letter-spacing: -.5px; }
+.auth-logo p { color: var(--text2); margin-top: 6px; }
+.input-group { background: var(--card-bg); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; box-shadow: var(--shadow); }
+.input-group input { display: block; width: 100%; padding: 16px; font-size: 17px; border: none; background: transparent; color: var(--text); outline: none; }
+.input-group input::placeholder { color: var(--text2); }
+.input-group input + input { border-top: 1px solid var(--border); }
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 16px; border: none; border-radius: var(--radius); font-size: 17px; font-weight: 600; cursor: pointer; transition: opacity .15s, transform .1s; }
+.btn:active { opacity: .8; transform: scale(.98); }
+.btn-primary { background: var(--blue); color: #fff; }
+.btn-danger { background: rgba(255,59,48,.1); color: var(--red); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.error-msg { color: var(--red); font-size: 14px; text-align: center; margin-top: 10px; min-height: 20px; }
+.auth-switch { margin-top: 24px; text-align: center; color: var(--text2); font-size: 15px; }
+.auth-switch button { background: none; border: none; color: var(--blue); font-size: 15px; cursor: pointer; font-weight: 500; }
+
+/* ── App shell ── */
+#app-screen { background: var(--bg); padding-bottom: 84px; }
+.tab-bar {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 430px;
+  background: rgba(255,255,255,.92); backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  display: flex; padding: 8px 0 20px; z-index: 100;
+}
+@media (prefers-color-scheme: dark) { .tab-bar { background: rgba(28,28,30,.92); } }
+.tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; border: none; background: none; color: var(--text2); font-size: 10px; font-weight: 500; cursor: pointer; padding: 6px 0; transition: color .15s; }
+.tab.active { color: var(--blue); }
+.tab svg { width: 24px; height: 24px; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.page-header { padding: 56px 20px 8px; }
+.page-header h2 { font-size: 34px; font-weight: 700; letter-spacing: -.5px; }
+
+/* ── Card tiles ── */
+.cards-list { padding: 12px 20px; display: flex; flex-direction: column; gap: 16px; }
+.card-tile {
+  position: relative; border-radius: 24px; padding: 26px; height: 200px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18); cursor: pointer;
+  transition: transform .2s; overflow: hidden;
+}
+.card-tile:active { transform: scale(.98); }
+.card-tile::before { content:''; position:absolute; top:-60px; right:-40px; width:200px; height:200px; border-radius:50%; background:rgba(255,255,255,.08); }
+.card-tile::after  { content:''; position:absolute; bottom:-80px; left:-30px; width:220px; height:220px; border-radius:50%; background:rgba(255,255,255,.05); }
+.card-top { display:flex; justify-content:space-between; align-items:center; position:relative; z-index:1; }
+.card-nickname { color:rgba(255,255,255,.85); font-size:16px; font-weight:600; }
+.card-status-badge { font-size:11px; font-weight:700; padding:4px 10px; border-radius:20px; background:rgba(255,255,255,.2); color:#fff; }
+.card-number { font-size:20px; font-family:'SF Mono','Courier New',monospace; color:#fff; letter-spacing:2px; position:relative; z-index:1; }
+.card-bottom { display:flex; justify-content:space-between; align-items:flex-end; position:relative; z-index:1; }
+.card-meta { display:flex; flex-direction:column; gap:3px; }
+.card-meta-label { font-size:9px; font-weight:700; letter-spacing:1px; color:rgba(255,255,255,.65); text-transform:uppercase; }
+.card-meta-value { font-size:14px; font-weight:600; color:#fff; }
+.grad-gold     { background: linear-gradient(135deg, #c9a227 0%, #7d6010 100%); }
+.grad-platinum { background: linear-gradient(135deg, #8e8e99 0%, #4a4a52 100%); }
+.grad-standard { background: linear-gradient(135deg, #007AFF 0%, #0051a8 100%); }
+.add-card-btn {
+  margin: 4px 20px 0; display:flex; align-items:center; justify-content:center; gap:10px;
+  padding:18px; border:2px dashed var(--border); border-radius:20px;
+  background:none; color:var(--blue); font-size:17px; font-weight:600;
+  cursor:pointer; width:calc(100% - 40px); transition:background .15s;
+}
+
+/* ── Transactions ── */
+.tx-section { padding: 0 20px 12px; }
+.tx-section-title { font-size:13px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; padding:16px 0 8px; }
+.tx-list { background:var(--card-bg); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); }
+.tx-row { display:flex; align-items:center; gap:14px; padding:14px 16px; border-bottom:1px solid var(--border); }
+.tx-row:last-child { border-bottom:none; }
+.tx-icon { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:20px; }
+.tx-icon.dining        { background:rgba(255,149,0,.15); }
+.tx-icon.travel        { background:rgba(0,122,255,.12); }
+.tx-icon.groceries     { background:rgba(52,199,89,.12); }
+.tx-icon.gas           { background:rgba(255,59,48,.12); }
+.tx-icon.subscriptions { background:rgba(88,86,214,.12); }
+.tx-icon.healthcare    { background:rgba(255,45,85,.12); }
+.tx-icon.online        { background:rgba(0,122,255,.12); }
+.tx-icon.general       { background:rgba(110,110,115,.12); }
+.tx-info { flex:1; min-width:0; }
+.tx-name { font-size:16px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tx-meta { font-size:13px; color:var(--text2); margin-top:2px; }
+.tx-right { text-align:right; flex-shrink:0; }
+.tx-amount { font-size:16px; font-weight:600; }
+.tx-amount.declined { color:var(--red); }
+.tx-cashback { font-size:12px; font-weight:700; color:var(--green); margin-top:2px; }
+.badge { font-size:11px; font-weight:600; padding:2px 7px; border-radius:6px; }
+.badge.captured { background:rgba(52,199,89,.12); color:var(--green); }
+.badge.declined  { background:rgba(255,59,48,.12);  color:var(--red); }
+.badge.pending   { background:rgba(255,149,0,.12);  color:var(--orange); }
+
+/* ── Rewards ── */
+.rewards-balance-card {
+  margin:12px 20px; border-radius:24px; padding:32px; text-align:center;
+  background:linear-gradient(135deg,#34C759,#1a7a32);
+  box-shadow:0 8px 32px rgba(52,199,89,.3);
+}
+.rewards-balance-label  { font-size:14px; color:rgba(255,255,255,.8); font-weight:500; }
+.rewards-balance-amount { font-size:52px; font-weight:800; color:#fff; letter-spacing:-1px; margin:8px 0; }
+.rewards-balance-sub    { font-size:13px; color:rgba(255,255,255,.7); }
+.rates-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; padding:0 20px; margin-top:20px; }
+.rate-cell { background:var(--card-bg); border-radius:14px; padding:14px 8px; text-align:center; box-shadow:var(--shadow); }
+.rate-cell-icon { font-size:22px; margin-bottom:6px; }
+.rate-cell-pct  { font-size:18px; font-weight:800; color:var(--green); }
+.rate-cell-name { font-size:10px; color:var(--text2); margin-top:3px; font-weight:500; }
+.section-title  { font-size:22px; font-weight:700; padding:20px 20px 10px; }
+.history-list   { margin:0 20px; background:var(--card-bg); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); }
+
+/* ── Statements ── */
+.stmt-form { margin:12px 20px; background:var(--card-bg); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); }
+.form-row { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--border); }
+.form-row:last-child { border-bottom:none; }
+.form-label { font-size:16px; }
+.seg-control { display:flex; background:var(--bg); border-radius:9px; padding:2px; gap:2px; }
+.seg-btn { flex:1; padding:6px 14px; border:none; border-radius:7px; font-size:14px; font-weight:600; cursor:pointer; background:transparent; color:var(--text2); transition:all .15s; }
+.seg-btn.active { background:var(--card-bg); color:var(--text); box-shadow:0 1px 4px rgba(0,0,0,.12); }
+.summary-card { margin:12px 20px; background:var(--card-bg); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); }
+.summary-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); }
+.summary-row:last-child { border-bottom:none; }
+.summary-label { color:var(--text2); font-size:15px; }
+.summary-value { font-size:15px; font-weight:600; }
+.summary-value.green { color:var(--green); }
+.cat-bar-row  { display:flex; align-items:center; gap:10px; padding:6px 0; }
+.cat-bar-label { width:100px; font-size:13px; color:var(--text2); }
+.cat-bar-track { flex:1; height:8px; background:var(--bg); border-radius:4px; overflow:hidden; }
+.cat-bar-fill  { height:100%; border-radius:4px; background:linear-gradient(90deg,var(--blue),#5AC8FA); }
+.cat-bar-amt   { width:58px; font-size:13px; font-weight:600; text-align:right; }
+
+/* ── Profile ── */
+.profile-avatar { width:80px; height:80px; border-radius:50%; background:linear-gradient(135deg,var(--blue),#5AC8FA); display:flex; align-items:center; justify-content:center; font-size:32px; font-weight:700; color:#fff; margin:24px auto 12px; }
+.profile-name   { text-align:center; font-size:22px; font-weight:700; }
+.profile-email  { text-align:center; font-size:15px; color:var(--text2); margin-bottom:24px; }
+.settings-group { margin:0 20px 16px; background:var(--card-bg); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); }
+.settings-row   { display:flex; align-items:center; justify-content:space-between; padding:15px 16px; border-bottom:1px solid var(--border); font-size:16px; }
+.settings-row:last-child { border-bottom:none; }
+.settings-val   { color:var(--text2); font-size:15px; }
+.settings-val.green { color:var(--green); font-weight:600; }
+
+/* ── Modal ── */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:200; display:none; align-items:flex-end; justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal { background:var(--card-bg); border-radius:24px 24px 0 0; padding:8px 24px 48px; width:100%; max-width:430px; max-height:90vh; overflow-y:auto; animation:slideUp .3s ease; }
+@keyframes slideUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
+.modal-handle { width:36px; height:5px; background:var(--border); border-radius:3px; margin:12px auto 20px; }
+.modal-title  { font-size:20px; font-weight:700; margin-bottom:20px; }
+.modal-label  { font-size:13px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; margin-top:16px; }
+.modal .input-group { box-shadow:none; border:1px solid var(--border); }
+.modal-row { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; background:var(--bg); border-radius:12px; margin-bottom:8px; }
+.switch { width:51px; height:31px; background:var(--border); border-radius:16px; position:relative; cursor:pointer; border:none; transition:background .2s; flex-shrink:0; }
+.switch.on { background:var(--green); }
+.switch::after { content:''; position:absolute; top:2px; left:2px; width:27px; height:27px; background:#fff; border-radius:50%; box-shadow:0 2px 6px rgba(0,0,0,.2); transition:transform .2s; }
+.switch.on::after { transform:translateX(20px); }
+.detail-card { border-radius:20px; padding:24px; margin-bottom:20px; height:180px; display:flex; flex-direction:column; justify-content:space-between; position:relative; overflow:hidden; }
+.detail-card::before { content:''; position:absolute; top:-40px; right:-30px; width:160px; height:160px; border-radius:50%; background:rgba(255,255,255,.08); }
+.sensitive-box  { background:var(--bg); border-radius:14px; padding:16px; margin-bottom:12px; }
+.sensitive-row  { display:flex; justify-content:space-between; align-items:center; }
+.sensitive-label { font-size:11px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; }
+.sensitive-value { font-size:16px; font-family:'SF Mono',monospace; font-weight:600; }
+.reveal-btn { background:none; border:none; color:var(--blue); font-size:15px; font-weight:600; cursor:pointer; }
+.action-list { display:flex; flex-direction:column; gap:10px; margin-top:16px; }
+.btn-simulate { background:rgba(88,86,214,.1); color:#5856D6; border:none; }
+.btn-freeze   { background:rgba(255,149,0,.1); color:var(--orange); border:none; }
+
+/* ── Demo hint ── */
+.demo-hint { background:rgba(88,86,214,.1); border-radius:12px; padding:12px 16px; margin:0 20px 12px; display:flex; align-items:center; gap:10px; }
+.demo-hint span:last-child { font-size:13px; color:#5856D6; font-weight:500; }
+
+/* ── Toast ── */
+.toast { position:fixed; top:60px; left:50%; transform:translateX(-50%) translateY(-80px); background:#1c1c1e; color:#fff; padding:12px 20px; border-radius:20px; font-size:14px; font-weight:500; z-index:500; transition:transform .3s ease; white-space:nowrap; max-width:90vw; text-align:center; }
+.toast.show { transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ AUTH ═══════════ -->
+<div id="auth-screen" class="screen active">
+  <div class="auth-logo">
+    <svg viewBox="0 0 72 72" fill="none">
+      <rect width="72" height="72" rx="18" fill="#007AFF"/>
+      <rect x="12" y="26" width="48" height="30" rx="6" fill="white" opacity="0.9"/>
+      <rect x="12" y="34" width="48" height="8" fill="white" opacity="0.3"/>
+      <rect x="18" y="42" width="16" height="6" rx="3" fill="white" opacity="0.7"/>
+      <circle cx="52" cy="20" r="8" fill="#FFD60A"/>
+      <circle cx="58" cy="20" r="8" fill="#FF9500" opacity="0.8"/>
+    </svg>
+    <h1>Smart Card</h1>
+    <p>Your universal rewards card</p>
+  </div>
+
+  <div style="width:100%">
+    <div id="login-form">
+      <div class="input-group">
+        <input type="email" id="l-email" placeholder="Email" value="demo@smartcard.com"/>
+        <input type="password" id="l-pass"  placeholder="Password" value="demo1234"/>
+      </div>
+      <button class="btn btn-primary" onclick="login()">Sign In</button>
+      <div class="error-msg" id="l-err"></div>
+      <div class="auth-switch">No account? <button onclick="showReg()">Create one</button></div>
+    </div>
+
+    <div id="reg-form" style="display:none">
+      <div class="input-group">
+        <input type="text"     id="r-first" placeholder="First Name"/>
+        <input type="text"     id="r-last"  placeholder="Last Name"/>
+        <input type="email"    id="r-email" placeholder="Email"/>
+        <input type="password" id="r-pass"  placeholder="Password (min 8 chars)"/>
+      </div>
+      <button class="btn btn-primary" onclick="register()">Create Account</button>
+      <div class="error-msg" id="r-err"></div>
+      <div class="auth-switch">Have an account? <button onclick="showLogin()">Sign In</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ APP ═══════════ -->
+<div id="app-screen" class="screen">
+
+  <!-- Cards -->
+  <div id="tab-cards" class="tab-content active">
+    <div class="page-header"><h2>My Cards</h2></div>
+    <div class="demo-hint"><span>💡</span><span>Tap a card → reveal number, freeze it, or fire a transaction</span></div>
+    <div class="cards-list" id="cards-list"></div>
+    <button class="add-card-btn" onclick="openAddCard()">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 4v14M4 11h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+      Add New Card
+    </button>
+  </div>
+
+  <!-- Activity -->
+  <div id="tab-transactions" class="tab-content">
+    <div class="page-header"><h2>Activity</h2></div>
+    <div id="tx-content"></div>
+  </div>
+
+  <!-- Rewards -->
+  <div id="tab-rewards" class="tab-content">
+    <div class="page-header"><h2>Rewards</h2></div>
+    <div class="rewards-balance-card">
+      <div class="rewards-balance-label">Available Cashback</div>
+      <div class="rewards-balance-amount" id="rw-balance">$0.00</div>
+      <div class="rewards-balance-sub" id="rw-total">$0.00 earned all time</div>
+    </div>
+    <div class="section-title">Cashback Rates</div>
+    <div class="rates-grid">
+      <div class="rate-cell"><div class="rate-cell-icon">✈️</div><div class="rate-cell-pct">5%</div><div class="rate-cell-name">Travel</div></div>
+      <div class="rate-cell"><div class="rate-cell-icon">🍽️</div><div class="rate-cell-pct">4%</div><div class="rate-cell-name">Dining</div></div>
+      <div class="rate-cell"><div class="rate-cell-icon">🛒</div><div class="rate-cell-pct">3%</div><div class="rate-cell-name">Grocery</div></div>
+      <div class="rate-cell"><div class="rate-cell-icon">⛽</div><div class="rate-cell-pct">3%</div><div class="rate-cell-name">Gas</div></div>
+      <div class="rate-cell"><div class="rate-cell-icon">💊</div><div class="rate-cell-pct">2%</div><div class="rate-cell-name">Health</div></div>
+      <div class="rate-cell"><div class="rate-cell-icon">🎵</div><div class="rate-cell-pct">2%</div><div class="rate-cell-name">Streaming</div></div>
+      <div class="rate-cell"><div class="rate-cell-icon">💻</div><div class="rate-cell-pct">2%</div><div class="rate-cell-name">Online</div></div>
+      <div class="rate-cell"><div class="rate-cell-icon">💳</div><div class="rate-cell-pct">1%</div><div class="rate-cell-name">Everything</div></div>
+    </div>
+    <div class="section-title">Cashback History</div>
+    <div class="history-list" id="rw-history"></div>
+  </div>
+
+  <!-- Statements -->
+  <div id="tab-statements" class="tab-content">
+    <div class="page-header"><h2>Statements</h2></div>
+    <div class="stmt-form">
+      <div class="form-row"><span class="form-label">From</span><input type="date" id="s-start" style="background:none;border:none;color:var(--blue);font-weight:500;font-size:15px;outline:none"/></div>
+      <div class="form-row"><span class="form-label">To</span><input type="date" id="s-end" style="background:none;border:none;color:var(--blue);font-weight:500;font-size:15px;outline:none"/></div>
+      <div class="form-row" style="border:none;padding-top:8px">
+        <button class="btn btn-primary" style="margin:0" onclick="genStatement()">Generate Statement</button>
+      </div>
+    </div>
+    <div id="stmt-out"></div>
+  </div>
+
+  <!-- Profile -->
+  <div id="tab-profile" class="tab-content">
+    <div class="profile-avatar" id="p-avatar">?</div>
+    <div class="profile-name"  id="p-name">—</div>
+    <div class="profile-email" id="p-email"></div>
+    <div class="settings-group">
+      <div class="settings-row"><span>KYC Status</span><span class="settings-val green">Approved ✓</span></div>
+      <div class="settings-row"><span>Total Cashback</span><span class="settings-val green" id="p-cashback">$0.00</span></div>
+      <div class="settings-row"><span>Member Since</span><span class="settings-val">May 2025</span></div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-row" style="color:var(--red);cursor:pointer" onclick="logout()">Sign Out</div>
+    </div>
+  </div>
+
+  <!-- Tab bar -->
+  <nav class="tab-bar">
+    <button class="tab active" onclick="switchTab('cards',this)">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 8a3 3 0 013-3h14a3 3 0 013 3v1H2V8zm0 3v5a3 3 0 003 3h14a3 3 0 003-3v-5H2zm4 3h4a1 1 0 110 2H6a1 1 0 110-2z"/></svg>
+      Cards
+    </button>
+    <button class="tab" onclick="switchTab('transactions',this)">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1zm0 6h16a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2a1 1 0 011-1zm0 6h10a1 1 0 110 2H4a1 1 0 110-2z"/></svg>
+      Activity
+    </button>
+    <button class="tab" onclick="switchTab('rewards',this)">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
+      Rewards
+    </button>
+    <button class="tab" onclick="switchTab('statements',this)">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8 13h8v1.5H8V13zm0 3h5v1.5H8V16zm0-6h3v1.5H8V10z"/></svg>
+      Statements
+    </button>
+    <button class="tab" onclick="switchTab('profile',this)">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-5.33 0-8 2.67-8 4v1h16v-1c0-1.33-2.67-4-8-4z"/></svg>
+      Profile
+    </button>
+  </nav>
+</div>
+
+<!-- ═══════════ CARD DETAIL MODAL ═══════════ -->
+<div class="modal-overlay" id="card-modal" onclick="closeModal('card-modal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div id="modal-card-visual" class="detail-card"></div>
+    <div class="sensitive-box">
+      <div class="sensitive-row" style="margin-bottom:10px">
+        <div>
+          <div class="sensitive-label">Card Number</div>
+          <div class="sensitive-value" id="d-number">•••• •••• •••• ••••</div>
+        </div>
+        <button class="reveal-btn" id="reveal-btn" onclick="toggleReveal()">Show</button>
+      </div>
+      <div class="sensitive-row">
+        <div><div class="sensitive-label">CVV</div><div class="sensitive-value" id="d-cvv">•••</div></div>
+        <div><div class="sensitive-label">Expires</div><div class="sensitive-value" id="d-exp">••/••</div></div>
+      </div>
+    </div>
+    <div class="action-list">
+      <button class="btn btn-simulate" id="sim-btn" onclick="simulateTx()">⚡ Simulate a Transaction</button>
+      <button class="btn btn-freeze"   id="frz-btn" onclick="toggleFreeze()">⏸ Pause Card</button>
+      <button class="btn btn-danger"              onclick="cancelCard()">Cancel Card</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ ADD CARD MODAL ═══════════ -->
+<div class="modal-overlay" id="add-modal" onclick="closeModal('add-modal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">New Card</div>
+    <div class="modal-label">Card Type</div>
+    <div class="seg-control" style="margin-bottom:16px">
+      <button class="seg-btn active" onclick="setType('virtual',this)">Virtual</button>
+      <button class="seg-btn"        onclick="setType('physical',this)">Physical</button>
+    </div>
+    <div class="modal-label">Nickname (optional)</div>
+    <div class="input-group" style="margin-bottom:16px"><input type="text" id="nc-name" placeholder="e.g. Travel Card"/></div>
+    <div class="modal-row">
+      <label>Set Monthly Spending Limit</label>
+      <button class="switch" id="lim-sw" onclick="toggleLim()"></button>
+    </div>
+    <div id="lim-inp" style="display:none;margin-top:8px">
+      <div class="input-group"><input type="number" id="nc-lim" placeholder="Limit in USD (e.g. 500)"/></div>
+    </div>
+    <button class="btn btn-primary" style="margin-top:20px" onclick="createCard()">Create Card</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════ DATA STORE (in-memory, no server needed) ═══════════
+
+const ICONS = { dining:'🍽️', travel:'✈️', groceries:'🛒', gas:'⛽', subscriptions:'🎵', healthcare:'💊', online:'💻', general:'💳' };
+const RATES = { dining:.04, travel:.05, groceries:.03, gas:.03, subscriptions:.02, healthcare:.02, online:.02, general:.01 };
+const MERCHANTS = [
+  { name:'Starbucks',       cat:'dining',        mcc:'5812' },
+  { name:'United Airlines', cat:'travel',        mcc:'4511' },
+  { name:'Whole Foods',     cat:'groceries',     mcc:'5411' },
+  { name:'Shell Gas',       cat:'gas',           mcc:'5541' },
+  { name:'Netflix',         cat:'subscriptions', mcc:'7372' },
+  { name:'Amazon',          cat:'online',        mcc:'5999' },
+  { name:'CVS Pharmacy',    cat:'healthcare',    mcc:'5912' },
+  { name:'Hilton Hotels',   cat:'travel',        mcc:'7011' },
+  { name:'Uber Eats',       cat:'dining',        mcc:'5812' },
+  { name:'Delta Airlines',  cat:'travel',        mcc:'4511' },
+];
+
+const DB = {
+  users: [
+    { id:'u1', email:'demo@smartcard.com', pass:'demo1234', firstName:'Alex', lastName:'Rivera', rewardsBalance:47.82, totalCashback:124.50 }
+  ],
+  cards: [
+    { id:'c1', userId:'u1', last4:'4242', expMonth:12, expYear:28, brand:'Visa', type:'virtual',  status:'active', nickname:'Daily Driver', tier:'gold',     limit:2000 },
+    { id:'c2', userId:'u1', last4:'8888', expMonth:9,  expYear:27, brand:'Visa', type:'physical', status:'active', nickname:'Travel Card',  tier:'platinum', limit:null },
+  ],
+  transactions: [
+    { id:'t1', cardId:'c1', amount:4280,  merchant:'Blue Bottle Coffee', cat:'dining',        rate:.04, cashback:1.71, status:'captured', date:'2026-05-19T08:30:00Z' },
+    { id:'t2', cardId:'c2', amount:89500, merchant:'United Airlines',    cat:'travel',        rate:.05, cashback:44.75,status:'captured', date:'2026-05-18T14:00:00Z' },
+    { id:'t3', cardId:'c1', amount:12340, merchant:'Whole Foods Market', cat:'groceries',     rate:.03, cashback:3.70, status:'captured', date:'2026-05-17T11:15:00Z' },
+    { id:'t4', cardId:'c1', amount:6500,  merchant:'Shell Gas Station',  cat:'gas',           rate:.03, cashback:1.95, status:'captured', date:'2026-05-16T09:00:00Z' },
+    { id:'t5', cardId:'c2', amount:1499,  merchant:'Netflix',            cat:'subscriptions', rate:.02, cashback:0.30, status:'captured', date:'2026-05-15T00:00:00Z' },
+    { id:'t6', cardId:'c1', amount:23400, merchant:'Hilton Hotels',      cat:'travel',        rate:.05, cashback:11.70,status:'captured', date:'2026-05-14T16:30:00Z' },
+    { id:'t7', cardId:'c1', amount:3200,  merchant:'CVS Pharmacy',       cat:'healthcare',    rate:.02, cashback:0.64, status:'captured', date:'2026-05-13T10:00:00Z' },
+    { id:'t8', cardId:'c2', amount:15000, merchant:'Amazon',             cat:'online',        rate:.02, cashback:3.00, status:'captured', date:'2026-05-12T12:00:00Z' },
+    { id:'t9', cardId:'c1', amount:8900,  merchant:'Uber Eats',          cat:'dining',        rate:.04, cashback:3.56, status:'captured', date:'2026-05-11T19:45:00Z' },
+    { id:'t10',cardId:'c1', amount:2100,  merchant:'Walgreens',          cat:'healthcare',    rate:.00, cashback:0.00, status:'declined', date:'2026-05-10T14:30:00Z' },
+  ]
+};
+
+// ═══════════ STATE ═══════════
+let currentUser = null;
+let selectedCardId = null;
+let revealed = false;
+let newCardType = 'virtual';
+let limitOn = false;
+
+// ═══════════ AUTH ═══════════
+
+function login() {
+  const email = $('l-email').value.trim();
+  const pass  = $('l-pass').value;
+  const user  = DB.users.find(u => u.email === email && u.pass === pass);
+  if (!user) { $('l-err').textContent = 'Wrong email or password'; return; }
+  currentUser = user;
+  enterApp();
+}
+
+function register() {
+  const first = $('r-first').value.trim();
+  const last  = $('r-last').value.trim();
+  const email = $('r-email').value.trim();
+  const pass  = $('r-pass').value;
+  if (!first || !last || !email || pass.length < 8) { $('r-err').textContent = 'Fill all fields (password ≥ 8 chars)'; return; }
+  if (DB.users.find(u => u.email === email)) { $('r-err').textContent = 'Email already used'; return; }
+  const user = { id:'u'+Date.now(), email, pass, firstName:first, lastName:last, rewardsBalance:0, totalCashback:0 };
+  DB.users.push(user);
+  currentUser = user;
+  enterApp();
+}
+
+function logout() {
+  currentUser = null;
+  $('app-screen').classList.remove('active');
+  $('auth-screen').classList.add('active');
+  showLogin();
+}
+
+function showReg()   { $('login-form').style.display='none';  $('reg-form').style.display='block'; }
+function showLogin() { $('reg-form').style.display='none';    $('login-form').style.display='block'; }
+
+function enterApp() {
+  $('auth-screen').classList.remove('active');
+  $('app-screen').classList.add('active');
+  renderCards(); renderActivity(); renderRewards(); renderProfile();
+  initDates();
+}
+
+// ═══════════ TABS ═══════════
+
+function switchTab(name, el) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  $('tab-'+name).classList.add('active');
+  el.classList.add('active');
+}
+
+// ═══════════ CARDS ═══════════
+
+function myCards() { return DB.cards.filter(c => c.userId === currentUser.id && c.status !== 'canceled'); }
+
+function renderCards() {
+  $('cards-list').innerHTML = myCards().map(c => `
+    <div class="card-tile grad-${c.tier}" onclick="openCard('${c.id}')">
+      <div class="card-top">
+        <span class="card-nickname">${c.nickname || 'Smart Card'}</span>
+        <span class="card-status-badge">${c.status === 'inactive' ? 'Paused' : cap(c.status)}</span>
+      </div>
+      <div class="card-number">•••• •••• •••• ${c.last4}</div>
+      <div class="card-bottom">
+        <div class="card-meta">
+          <span class="card-meta-label">Expires</span>
+          <span class="card-meta-value">${pad(c.expMonth)}/${String(c.expYear).slice(-2)}</span>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:10px;font-weight:800;letter-spacing:1.5px;color:rgba(255,255,255,.9);text-transform:uppercase">${c.tier}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.8)">${c.brand} ${c.type}</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openCard(id) {
+  selectedCardId = id; revealed = false;
+  const c = card(id);
+  $('modal-card-visual').className = 'detail-card grad-' + c.tier;
+  $('modal-card-visual').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="color:rgba(255,255,255,.85);font-size:15px;font-weight:600">${c.nickname || 'Smart Card'}</span>
+      <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.2);color:#fff">${c.status==='inactive'?'Paused':cap(c.status)}</span>
+    </div>
+    <div style="font-size:19px;font-family:monospace;color:#fff;letter-spacing:2px;position:relative;z-index:1">•••• •••• •••• ${c.last4}</div>
+    <div style="display:flex;justify-content:space-between;position:relative;z-index:1">
+      <div><div style="font-size:9px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,.65);text-transform:uppercase">Expires</div>
+           <div style="font-size:14px;font-weight:600;color:#fff">${pad(c.expMonth)}/${String(c.expYear).slice(-2)}</div></div>
+      <div style="text-align:right"><div style="font-size:10px;font-weight:800;letter-spacing:1.5px;color:rgba(255,255,255,.9);text-transform:uppercase">${c.tier}</div>
+           <div style="font-size:12px;color:rgba(255,255,255,.8)">${c.brand} ${c.type}</div></div>
+    </div>
+  `;
+  $('d-number').textContent = '•••• •••• •••• ••••';
+  $('d-cvv').textContent    = '•••';
+  $('d-exp').textContent    = '••/••';
+  $('reveal-btn').textContent = 'Show';
+  $('frz-btn').textContent  = c.status === 'active' ? '⏸ Pause Card' : '▶ Activate Card';
+  $('sim-btn').disabled     = c.status !== 'active';
+  openModal('card-modal');
+}
+
+function toggleReveal() {
+  revealed = !revealed;
+  $('d-number').textContent = revealed ? '4242 4242 4242 4242' : '•••• •••• •••• ••••';
+  $('d-cvv').textContent    = revealed ? '737' : '•••';
+  $('d-exp').textContent    = revealed ? '12/28' : '••/••';
+  $('reveal-btn').textContent = revealed ? 'Hide' : 'Show';
+}
+
+function toggleFreeze() {
+  const c = card(selectedCardId);
+  c.status = c.status === 'active' ? 'inactive' : 'active';
+  renderCards();
+  closeModal('card-modal');
+  toast(c.status === 'active' ? '✅ Card activated' : '⏸️ Card paused');
+}
+
+function cancelCard() {
+  if (!confirm('Cancel this card? This cannot be undone.')) return;
+  card(selectedCardId).status = 'canceled';
+  renderCards(); closeModal('card-modal'); toast('Card canceled');
+}
+
+function simulateTx() {
+  const m = MERCHANTS[Math.floor(Math.random() * MERCHANTS.length)];
+  const amount   = Math.floor(500 + Math.random() * 15000);
+  const cashback = Math.round(amount * (RATES[m.cat] || .01)) / 100;
+  DB.transactions.unshift({
+    id: 't'+Date.now(), cardId: selectedCardId, amount, merchant: m.name,
+    cat: m.cat, rate: RATES[m.cat]||.01, cashback, status: 'captured',
+    date: new Date().toISOString()
+  });
+  currentUser.rewardsBalance  = round2(currentUser.rewardsBalance  + cashback);
+  currentUser.totalCashback   = round2(currentUser.totalCashback   + cashback);
+  renderRewards(); renderActivity(); renderProfile();
+  closeModal('card-modal');
+  toast(`${ICONS[m.cat]||'💳'} $${(amount/100).toFixed(2)} at ${m.name} · +$${cashback.toFixed(2)} cashback!`);
+}
+
+// ═══════════ ADD CARD ═══════════
+
+function openAddCard() {
+  $('nc-name').value = ''; $('nc-lim').value = '';
+  limitOn = false; $('lim-sw').className = 'switch'; $('lim-inp').style.display='none';
+  openModal('add-modal');
+}
+function setType(t, btn) {
+  newCardType = t;
+  btn.closest('.seg-control').querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function toggleLim() {
+  limitOn = !limitOn;
+  $('lim-sw').className = 'switch' + (limitOn ? ' on' : '');
+  $('lim-inp').style.display = limitOn ? 'block' : 'none';
+}
+function createCard() {
+  const tiers = ['standard','gold','platinum'];
+  const c = {
+    id: 'c'+Date.now(), userId: currentUser.id,
+    last4: String(Math.floor(1000 + Math.random()*9000)),
+    expMonth:12, expYear:29, brand:'Visa',
+    type: newCardType, status:'active',
+    nickname: $('nc-name').value || null,
+    tier: tiers[Math.floor(Math.random()*tiers.length)],
+    limit: limitOn ? parseFloat($('nc-lim').value)||null : null
+  };
+  DB.cards.push(c);
+  renderCards(); closeModal('add-modal');
+  toast(`New ${newCardType} card created! •••• ${c.last4}`);
+}
+
+// ═══════════ ACTIVITY ═══════════
+
+function myTxs() {
+  const ids = myCards().map(c => c.id);
+  return DB.transactions.filter(t => ids.includes(t.cardId));
+}
+
+function renderActivity() {
+  const txs = myTxs().sort((a,b) => new Date(b.date)-new Date(a.date));
+  if (!txs.length) { $('tx-content').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text2)">No transactions yet — tap a card and simulate one!</div>'; return; }
+  const grouped = {};
+  txs.forEach(t => {
+    const key = new Date(t.date).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+    (grouped[key] = grouped[key]||[]).push(t);
+  });
+  $('tx-content').innerHTML = Object.entries(grouped).map(([d,list]) => `
+    <div class="tx-section">
+      <div class="tx-section-title">${d}</div>
+      <div class="tx-list">${list.map(t => `
+        <div class="tx-row">
+          <div class="tx-icon ${t.cat}">${ICONS[t.cat]||'💳'}</div>
+          <div class="tx-info">
+            <div class="tx-name">${t.merchant}</div>
+            <div class="tx-meta"><span class="badge ${t.status}">${t.status==='captured'?'Completed':cap(t.status)}</span></div>
+          </div>
+          <div class="tx-right">
+            <div class="tx-amount ${t.status==='declined'?'declined':''}">$${(t.amount/100).toFixed(2)}</div>
+            ${t.cashback>0?`<div class="tx-cashback">+$${t.cashback.toFixed(2)}</div>`:''}
+          </div>
+        </div>
+      `).join('')}</div>
+    </div>
+  `).join('');
+}
+
+// ═══════════ REWARDS ═══════════
+
+function renderRewards() {
+  $('rw-balance').textContent = '$' + currentUser.rewardsBalance.toFixed(2);
+  $('rw-total').textContent   = '$' + currentUser.totalCashback.toFixed(2) + ' earned all time';
+  const hist = myTxs().filter(t => t.cashback > 0).sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,8);
+  $('rw-history').innerHTML = hist.map(t => `
+    <div class="tx-row">
+      <div class="tx-icon ${t.cat}">${ICONS[t.cat]||'💳'}</div>
+      <div class="tx-info">
+        <div class="tx-name">${t.merchant}</div>
+        <div class="tx-meta">${(t.rate*100).toFixed(0)}% cashback · ${t.cat}</div>
+      </div>
+      <div class="tx-right">
+        <div class="tx-cashback" style="font-size:15px">+$${t.cashback.toFixed(2)}</div>
+      </div>
+    </div>
+  `).join('') || '<div style="padding:20px;text-align:center;color:var(--text2)">No cashback yet</div>';
+}
+
+// ═══════════ STATEMENTS ═══════════
+
+function initDates() {
+  const now = new Date();
+  $('s-end').value   = now.toISOString().slice(0,10);
+  $('s-start').value = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+}
+
+function genStatement() {
+  const from = new Date($('s-start').value);
+  const to   = new Date($('s-end').value);
+  const txs  = myTxs().filter(t => { const d=new Date(t.date); return d>=from && d<=to && t.status==='captured'; });
+  const totalSpend    = txs.reduce((s,t)=>s+t.amount,0)/100;
+  const totalCashback = txs.reduce((s,t)=>s+t.cashback,0);
+  const byCategory = {};
+  txs.forEach(t => {
+    (byCategory[t.cat] = byCategory[t.cat]||{spend:0,count:0,cashback:0}).spend += t.amount/100;
+    byCategory[t.cat].count++;
+    byCategory[t.cat].cashback += t.cashback;
+  });
+  const cats = Object.entries(byCategory).sort((a,b)=>b[1].spend-a[1].spend);
+  const maxSpend = cats[0]?.[1]?.spend || 1;
+  $('stmt-out').innerHTML = `
+    <div class="summary-card">
+      <div style="font-size:16px;font-weight:700;margin-bottom:14px">Summary · ${$('s-start').value} to ${$('s-end').value}</div>
+      <div class="summary-row"><span class="summary-label">Total Spend</span><span class="summary-value">$${totalSpend.toFixed(2)}</span></div>
+      <div class="summary-row"><span class="summary-label">Cashback Earned</span><span class="summary-value green">$${totalCashback.toFixed(2)}</span></div>
+      <div class="summary-row"><span class="summary-label">Transactions</span><span class="summary-value">${txs.length}</span></div>
+    </div>
+    <div class="summary-card" style="margin-top:-4px">
+      <div style="font-size:15px;font-weight:700;margin-bottom:12px">Spend by Category</div>
+      ${cats.length ? cats.map(([cat,d])=>`
+        <div class="cat-bar-row">
+          <div class="cat-bar-label">${ICONS[cat]||'💳'} ${cap(cat)}</div>
+          <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${Math.round(d.spend/maxSpend*100)}%"></div></div>
+          <div class="cat-bar-amt">$${d.spend.toFixed(0)}</div>
+        </div>
+      `).join('') : '<div style="color:var(--text2);font-size:14px">No transactions in this period</div>'}
+    </div>
+  `;
+  toast(`📄 Statement ready — ${txs.length} transactions`);
+}
+
+// ═══════════ PROFILE ═══════════
+
+function renderProfile() {
+  $('p-avatar').textContent  = currentUser.firstName.charAt(0);
+  $('p-name').textContent    = currentUser.firstName + ' ' + currentUser.lastName;
+  $('p-email').textContent   = currentUser.email;
+  $('p-cashback').textContent= '$' + currentUser.totalCashback.toFixed(2);
+}
+
+// ═══════════ HELPERS ═══════════
+
+function $(id)       { return document.getElementById(id); }
+function card(id)    { return DB.cards.find(c => c.id === id); }
+function cap(s)      { return s.charAt(0).toUpperCase() + s.slice(1); }
+function pad(n)      { return String(n).padStart(2,'0'); }
+function round2(n)   { return Math.round(n*100)/100; }
+function openModal(id)  { $(id).classList.add('open'); }
+function closeModal(id) { $(id).classList.remove('open'); }
+
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+document.addEventListener('keydown', e => { if (e.key==='Enter' && $('login-form').style.display!=='none') login(); });
+</script>
+</body>
+</html>
