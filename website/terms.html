@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terms of Service — Universal SmartCard</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --primary: #B5D300;
+  --primary-dark: #8FA800;
+  --primary-light: #E8F5A3;
+  --dark: #0F1A00;
+  --dark2: #1E3300;
+  --text: #1a1a1a;
+  --text2: #555;
+  --bg: #FAFFF0;
+  --white: #ffffff;
+  --radius: 16px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+}
+
+/* ── Nav ── */
+nav {
+  background: rgba(250,255,240,0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(181,211,0,0.2);
+  padding: 16px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.nav-logo-icon {
+  width: 36px;
+  height: 36px;
+  background: var(--primary);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.nav-logo-icon svg { width: 20px; height: 20px; }
+.nav-logo-text { font-size: 18px; font-weight: 700; color: var(--dark); }
+.nav-cta {
+  background: var(--primary);
+  color: var(--dark);
+  padding: 10px 22px;
+  border-radius: 50px;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background .15s;
+}
+.nav-cta:hover { background: var(--primary-dark); }
+
+/* ── Page content ── */
+.page-wrap {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 64px 24px 96px;
+}
+
+.page-header {
+  margin-bottom: 48px;
+  padding-bottom: 32px;
+  border-bottom: 2px solid var(--primary-light);
+}
+.page-label {
+  display: inline-block;
+  background: var(--primary-light);
+  color: var(--dark2);
+  padding: 5px 14px;
+  border-radius: 50px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 16px;
+}
+.page-header h1 {
+  font-size: clamp(30px, 5vw, 44px);
+  font-weight: 800;
+  color: var(--dark);
+  letter-spacing: -1px;
+  line-height: 1.1;
+  margin-bottom: 12px;
+}
+.page-header .last-updated {
+  font-size: 14px;
+  color: var(--text2);
+}
+
+/* ── Sections ── */
+.toc {
+  background: var(--white);
+  border: 1px solid rgba(181,211,0,0.3);
+  border-radius: var(--radius);
+  padding: 28px 32px;
+  margin-bottom: 48px;
+}
+.toc h2 {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--text2);
+  margin-bottom: 16px;
+}
+.toc ol {
+  padding-left: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 24px;
+}
+.toc li { font-size: 14px; }
+.toc a { color: var(--primary-dark); text-decoration: none; font-weight: 500; }
+.toc a:hover { text-decoration: underline; }
+
+.section {
+  margin-bottom: 44px;
+  scroll-margin-top: 90px;
+}
+.section h2 {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--dark);
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(181,211,0,0.25);
+}
+.section p {
+  font-size: 15.5px;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+.section ul, .section ol {
+  padding-left: 22px;
+  margin-bottom: 12px;
+}
+.section li {
+  font-size: 15.5px;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.highlight-box {
+  background: var(--primary-light);
+  border-left: 4px solid var(--primary-dark);
+  border-radius: 0 8px 8px 0;
+  padding: 14px 18px;
+  margin: 16px 0;
+  font-size: 14.5px;
+  color: var(--dark2);
+  font-weight: 500;
+}
+
+/* ── Footer ── */
+footer {
+  background: var(--dark);
+  padding: 48px 40px;
+}
+.footer-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+.footer-logo { font-size: 18px; font-weight: 700; color: var(--white); }
+.footer-links { display: flex; gap: 24px; flex-wrap: wrap; }
+.footer-links a {
+  color: rgba(255,255,255,.45);
+  text-decoration: none;
+  font-size: 14px;
+  transition: color .15s;
+}
+.footer-links a:hover { color: rgba(255,255,255,.85); }
+.footer-copy { color: rgba(255,255,255,.3); font-size: 13px; width: 100%; }
+
+@media (max-width: 640px) {
+  nav { padding: 14px 20px; }
+  .page-wrap { padding: 40px 20px 72px; }
+  .toc ol { grid-template-columns: 1fr; }
+  .footer-inner { flex-direction: column; align-items: flex-start; }
+  footer { padding: 40px 24px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Nav ── -->
+<nav>
+  <a class="nav-logo" href="index.html">
+    <div class="nav-logo-icon">
+      <svg viewBox="0 0 20 20" fill="none">
+        <rect x="2" y="6" width="16" height="10" rx="2" fill="#0F1A00" opacity=".9"/>
+        <rect x="2" y="9" width="16" height="3" fill="#0F1A00" opacity=".3"/>
+        <rect x="4" y="12" width="5" height="2" rx="1" fill="#0F1A00" opacity=".6"/>
+      </svg>
+    </div>
+    <span class="nav-logo-text">Universal SmartCard</span>
+  </a>
+  <a href="login.html" class="nav-cta">Sign In</a>
+</nav>
+
+<!-- ── Content ── -->
+<div class="page-wrap">
+
+  <div class="page-header">
+    <div class="page-label">Legal</div>
+    <h1>Terms of Service</h1>
+    <p class="last-updated">Last updated: May 2026</p>
+  </div>
+
+  <!-- Table of Contents -->
+  <div class="toc">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#acceptance">Acceptance of Terms</a></li>
+      <li><a href="#service">Description of Service</a></li>
+      <li><a href="#eligibility">Eligibility</a></li>
+      <li><a href="#account">Account Registration</a></li>
+      <li><a href="#issued-cards">Issued Cards</a></li>
+      <li><a href="#rewards">Rewards &amp; Cashback</a></li>
+      <li><a href="#prohibited">Prohibited Uses</a></li>
+      <li><a href="#disclaimers">Disclaimers</a></li>
+      <li><a href="#liability">Limitation of Liability</a></li>
+      <li><a href="#governing-law">Governing Law</a></li>
+      <li><a href="#changes">Changes to Terms</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ol>
+  </div>
+
+  <!-- 1 -->
+  <div class="section" id="acceptance">
+    <h2>1. Acceptance of Terms</h2>
+    <p>By creating an account, accessing, or using any part of the Universal SmartCard platform (the "Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree with any part of these Terms, you must not use the Service.</p>
+    <p>These Terms form a legally binding agreement between you and Universal SmartCard ("we," "us," or "our"). By clicking "Create Account," "Sign In," or otherwise affirmatively accepting these Terms, you represent that you have read, understood, and agree to be bound by them, together with our Privacy Policy, which is incorporated by reference.</p>
+  </div>
+
+  <!-- 2 -->
+  <div class="section" id="service">
+    <h2>2. Description of Service</h2>
+    <p>Universal SmartCard is a free financial technology platform that helps you get more value from your existing credit and debit cards. The Service includes:</p>
+    <ul>
+      <li><strong>Card Recommendation Engine:</strong> Based on the credit card products you tell us you own, we recommend which card to use for each purchase category to maximize your rewards, cashback, or points.</li>
+      <li><strong>Transaction History &amp; Dashboard:</strong> A unified view of your spending and estimated rewards across your registered card products.</li>
+      <li><strong>Issued Smart Cards:</strong> Virtual and physical Visa-branded payment cards issued under our program through Stripe Issuing, which you can use where Visa is accepted.</li>
+      <li><strong>Consolidated Statements:</strong> Monthly summaries of your spending and rewards across all registered cards.</li>
+    </ul>
+    <p>The Service is provided free of charge. We do not charge monthly fees, annual fees, or transaction fees for the core recommendation and tracking features. Issued card programs may have their own fee schedules disclosed separately at the time of application.</p>
+  </div>
+
+  <!-- 3 -->
+  <div class="section" id="eligibility">
+    <h2>3. Eligibility</h2>
+    <p>To use the Service, you must meet all of the following requirements:</p>
+    <ul>
+      <li>You must be at least 18 years of age.</li>
+      <li>You must be a legal resident of the United States. The Service is currently available in the United States only. We plan to expand to additional countries in the future and will update these Terms accordingly.</li>
+      <li>You must have the legal capacity to enter into a binding contract.</li>
+      <li>You must not have been previously suspended or removed from the Service for a violation of these Terms.</li>
+    </ul>
+    <p>By creating an account, you represent and warrant that you meet all of the above eligibility requirements. If we discover that you do not meet these requirements, we reserve the right to suspend or terminate your account immediately.</p>
+    <div class="highlight-box">
+      Application for a Universal SmartCard-issued Visa card is subject to additional eligibility criteria, identity verification, and creditworthiness checks as required by our card-issuing partner, Stripe Issuing, and applicable law.
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="section" id="account">
+    <h2>4. Account Registration</h2>
+    <p>You must register for an account to access most features of the Service. When registering, you agree to:</p>
+    <ul>
+      <li>Provide accurate, current, and complete information, including your legal name, email address, and phone number.</li>
+      <li>Keep your account credentials confidential and not share your password with anyone.</li>
+      <li>Notify us immediately at <a href="mailto:support@universalsmartcard.com">support@universalsmartcard.com</a> if you suspect unauthorized access to your account.</li>
+      <li>Maintain and promptly update your account information to keep it accurate.</li>
+    </ul>
+    <p>You are responsible for all activity that occurs under your account, whether or not you authorized it, to the extent permitted by law. We are not liable for any loss caused by unauthorized use of your credentials, provided we have acted reasonably in the circumstances.</p>
+    <p>We reserve the right to refuse registration, or suspend or terminate an account, at our sole discretion, including where we reasonably suspect fraud, misuse, or a violation of these Terms.</p>
+  </div>
+
+  <!-- 5 -->
+  <div class="section" id="issued-cards">
+    <h2>5. Issued Cards</h2>
+    <p>Universal SmartCard offers virtual and physical Visa-branded payment cards ("Smart Cards") issued through <strong>Stripe Issuing</strong>. By applying for or using a Smart Card, you acknowledge and agree to the following:</p>
+    <ul>
+      <li><strong>Stripe's Terms Apply:</strong> Smart Cards are issued under Stripe's issuing program. Your use of any issued card is subject to Stripe's Issuing Cardholder Terms, Stripe's Privacy Policy, and any applicable bank partner agreements, in addition to these Terms. We will provide links to those terms at the time of application.</li>
+      <li><strong>Identity Verification:</strong> Applying for a Smart Card requires identity verification (Know Your Customer / KYC) as required by federal law. You authorize us and our partners to verify your identity using the information you provide.</li>
+      <li><strong>No Raw Card Storage:</strong> We do not store your full card numbers, CVV/CVC codes, or PINs on our servers. Card credentials are managed securely by Stripe in their PCI-DSS-compliant environment.</li>
+      <li><strong>Virtual Cards:</strong> Virtual Smart Cards are issued instantly and can be used for online and in-app purchases wherever Visa is accepted. Virtual card details are displayed securely within your Universal SmartCard account dashboard.</li>
+      <li><strong>Physical Cards:</strong> Physical Smart Cards are mailed to the address you provide and typically arrive within 5–7 business days. We are not responsible for delays caused by postal services or incorrect addresses provided by you.</li>
+      <li><strong>Card Limits &amp; Controls:</strong> Spending limits and other controls may be applied as required by Stripe, our bank partner, or applicable law. These may change at any time with notice.</li>
+      <li><strong>Disputes:</strong> For disputes about transactions on your Smart Card, you must follow the dispute process outlined in Stripe's Cardholder Terms. We will assist in facilitating disputes where reasonable, but final resolution authority rests with the issuing bank.</li>
+    </ul>
+  </div>
+
+  <!-- 6 -->
+  <div class="section" id="rewards">
+    <h2>6. Rewards &amp; Cashback</h2>
+    <p>Universal SmartCard provides two types of rewards data:</p>
+    <ul>
+      <li><strong>Third-Party Card Recommendations (Estimated):</strong> For credit cards issued by other banks or financial institutions (e.g., Chase, American Express, Citi), our recommendations and cashback estimates are based on publicly available rewards program information. These estimates are for informational purposes only and may not reflect your actual rewards earned, which are governed solely by your cardholder agreement with the issuing bank. Universal SmartCard is not affiliated with, endorsed by, or sponsored by any third-party card issuer.</li>
+      <li><strong>Smart Card Rewards (Confirmed):</strong> Cashback and rewards earned on Universal SmartCard-issued Visa cards are tracked directly and accurately reflected in your account. The specific rates, categories, and terms of Smart Card rewards are disclosed in the Smart Card rewards program terms provided at the time of card issuance and may change with 30 days' notice.</li>
+    </ul>
+    <div class="highlight-box">
+      We do not guarantee the accuracy of third-party rewards estimates. Always verify your actual rewards with your card issuer.
+    </div>
+    <p>Rewards accrued on Smart Cards are subject to the Smart Card rewards program terms. We reserve the right to modify, suspend, or discontinue any rewards program at any time, with notice where practicable.</p>
+  </div>
+
+  <!-- 7 -->
+  <div class="section" id="prohibited">
+    <h2>7. Prohibited Uses</h2>
+    <p>You agree that you will not use the Service to:</p>
+    <ul>
+      <li>Provide false, misleading, or fraudulent information during registration or card application.</li>
+      <li>Use any issued Smart Card or platform features for illegal purposes, including money laundering, fraud, or financing prohibited activities.</li>
+      <li>Attempt to gain unauthorized access to other users' accounts or any part of our systems.</li>
+      <li>Reverse-engineer, scrape, or copy any part of the Service without our written permission.</li>
+      <li>Use automated bots, scripts, or other tools to access the Service in ways not intended for human use, without our explicit written consent.</li>
+      <li>Conduct or facilitate any transaction that violates applicable federal, state, or local laws.</li>
+      <li>Attempt to manipulate or artificially inflate rewards balances.</li>
+      <li>Interfere with or disrupt the integrity or performance of the Service or its underlying infrastructure.</li>
+    </ul>
+    <p>Violation of any prohibited use may result in immediate account suspension or termination, reversal of any rewards earned in connection with the violation, and referral to appropriate law enforcement authorities.</p>
+  </div>
+
+  <!-- 8 -->
+  <div class="section" id="disclaimers">
+    <h2>8. Disclaimers</h2>
+    <p>The Service is provided "as is" and "as available," without warranties of any kind, either express or implied, to the fullest extent permitted by applicable law. We expressly disclaim all warranties, including but not limited to:</p>
+    <ul>
+      <li>Implied warranties of merchantability, fitness for a particular purpose, and non-infringement.</li>
+      <li>Warranties that the Service will be uninterrupted, error-free, or free of harmful components.</li>
+      <li>Warranties as to the accuracy, completeness, or timeliness of any rewards estimates or recommendations provided through the Service.</li>
+    </ul>
+    <p>The card recommendation engine is a tool to help you make more informed choices, not personalized financial advice. You remain solely responsible for all financial decisions you make, including which card to use for any particular transaction.</p>
+    <p>We do not control and are not responsible for the rewards programs, terms, or practices of third-party card issuers. Changes to third-party rewards programs may not be immediately reflected in our recommendations.</p>
+  </div>
+
+  <!-- 9 -->
+  <div class="section" id="liability">
+    <h2>9. Limitation of Liability</h2>
+    <p>To the fullest extent permitted by applicable law, Universal SmartCard, its officers, directors, employees, agents, and partners shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising out of or related to your use of (or inability to use) the Service, including but not limited to:</p>
+    <ul>
+      <li>Lost profits or revenue, whether actual or anticipated.</li>
+      <li>Failure to earn expected rewards or cashback from any card program.</li>
+      <li>Unauthorized access to your account resulting from your failure to safeguard your credentials.</li>
+      <li>Actions or omissions of Stripe or any other third-party service provider.</li>
+      <li>Service interruptions, data loss, or system failures beyond our reasonable control.</li>
+    </ul>
+    <p>Our total cumulative liability to you for any claims arising out of or related to these Terms or the Service shall not exceed the greater of (a) the total fees you have paid to us in the twelve months prior to the claim, or (b) $50 USD. Because the Service is free, this amount will typically be $50 USD.</p>
+    <p>Some jurisdictions do not allow the exclusion of certain warranties or the limitation of certain liabilities. In those jurisdictions, the above limitations apply to the maximum extent permitted by law.</p>
+  </div>
+
+  <!-- 10 -->
+  <div class="section" id="governing-law">
+    <h2>10. Governing Law &amp; Dispute Resolution</h2>
+    <p>These Terms are governed by and construed in accordance with the laws of the State of Delaware, without regard to its conflict-of-law provisions.</p>
+    <p>Any dispute, claim, or controversy arising out of or relating to these Terms or the Service that cannot be resolved informally shall be resolved by binding arbitration administered by the American Arbitration Association (AAA) under its Consumer Arbitration Rules. The arbitration shall take place in Delaware, or remotely at your election. The arbitrator's decision shall be final and binding, and judgment may be entered in any court of competent jurisdiction.</p>
+    <p>You agree to bring any claims against us on an individual basis only and not as part of a class action or representative proceeding, to the extent permitted by applicable law.</p>
+    <p>Notwithstanding the foregoing, either party may seek emergency injunctive relief in a court of competent jurisdiction to prevent irreparable harm pending arbitration.</p>
+  </div>
+
+  <!-- 11 -->
+  <div class="section" id="changes">
+    <h2>11. Changes to Terms</h2>
+    <p>We may update these Terms from time to time. When we make material changes, we will notify you by:</p>
+    <ul>
+      <li>Sending an email to the address associated with your account, and/or</li>
+      <li>Posting a prominent notice on the Service dashboard.</li>
+    </ul>
+    <p>The updated Terms will include a revised "Last updated" date at the top of this page. Your continued use of the Service after the effective date of any changes constitutes your acceptance of the revised Terms. If you do not agree with the updated Terms, you must stop using the Service and may close your account by contacting us.</p>
+  </div>
+
+  <!-- 12 -->
+  <div class="section" id="contact">
+    <h2>12. Contact</h2>
+    <p>If you have questions, concerns, or complaints about these Terms or the Service, please contact us:</p>
+    <ul>
+      <li><strong>Email:</strong> <a href="mailto:support@universalsmartcard.com">support@universalsmartcard.com</a></li>
+      <li><strong>Company:</strong> Universal SmartCard</li>
+    </ul>
+    <p>We aim to respond to all inquiries within 3 business days.</p>
+  </div>
+
+</div>
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-logo">Universal SmartCard</div>
+    <div class="footer-links">
+      <a href="index.html">Home</a>
+      <a href="login.html">Sign In</a>
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="terms.html">Terms of Service</a>
+      <a href="mailto:support@universalsmartcard.com">Contact</a>
+    </div>
+    <div class="footer-copy">© 2026 Universal SmartCard. All rights reserved. Cards issued by Stripe Issuing.</div>
+  </div>
+</footer>
+
+</body>
+</html>
