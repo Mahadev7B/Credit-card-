@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const mongoose = require('mongoose');
 const cron = require('node-cron');
+const path = require('path');
 const logger = require('./config/logger');
 
 const authRoutes = require('./routes/auth');
@@ -21,7 +22,8 @@ const app = express();
 // Webhook route must use raw body before JSON parsing
 app.use('/webhooks/stripe', express.raw({ type: 'application/json' }), webhookRoutes);
 
-app.use(helmet({
+// Strict CSP only on /api routes — static HTML pages carry their own CSP meta tags
+app.use('/api', helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'none'"],
@@ -36,6 +38,8 @@ app.use(helmet({
   crossOriginOpenerPolicy: { policy: 'same-origin' },
   crossOriginResourcePolicy: { policy: 'same-origin' },
 }));
+// Lighter helmet for static pages (still sets HSTS, X-Frame-Options, etc.)
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 app.use(cors({
   origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : false,
   credentials: false,
@@ -67,6 +71,14 @@ app.use('/api/rewards', rewardsRoutes);
 app.use('/api/recommend', recommendRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+
+// Serve the website folder as static files
+const websiteDir = path.join(__dirname, '..', 'website');
+app.use(express.static(websiteDir));
+// Catch-all: serve index.html for any non-API route (SPA-style)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(websiteDir, 'index.html'));
+});
 
 // Error handler
 app.use((err, req, res, next) => {
