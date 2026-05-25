@@ -102,7 +102,7 @@ app.get('/api/auth/me', auth, (req, res) => res.json({ user: safeUser(req.user) 
 // ─── Card routes ───────────────────────────────────────────────────────────
 
 app.get('/api/cards', auth, (req, res) => {
-  res.json({ cards: cards.filter(c => c.userId === req.user.id && c.status !== 'canceled') });
+  res.json({ cards: cards.filter(c => c.userId === req.user.id && c.status !== 'canceled').map(cardRes) });
 });
 
 app.post('/api/cards', auth, (req, res) => {
@@ -120,7 +120,7 @@ app.post('/api/cards', auth, (req, res) => {
     createdAt: new Date().toISOString(),
   };
   cards.push(newCard);
-  res.status(201).json({ card: newCard });
+  res.status(201).json({ card: cardRes(newCard) });
 });
 
 app.get('/api/cards/:id', auth, (req, res) => {
@@ -129,14 +129,14 @@ app.get('/api/cards/:id', auth, (req, res) => {
   const sensitiveData = card.status === 'active'
     ? { number: '4242424242424242', cvc: '737', expMonth: card.expMonth, expYear: card.expYear }
     : null;
-  res.json({ card, sensitiveData });
+  res.json({ card: cardRes(card), sensitiveData });
 });
 
 app.patch('/api/cards/:id/status', auth, (req, res) => {
   const card = cards.find(c => c.id === req.params.id && c.userId === req.user.id);
   if (!card) return res.status(404).json({ error: 'Not found' });
   card.status = req.body.status;
-  res.json({ card });
+  res.json({ card: cardRes(card) });
 });
 
 app.delete('/api/cards/:id', auth, (req, res) => {
@@ -152,7 +152,7 @@ app.get('/api/cards/:id/transactions', auth, (req, res) => {
   const card = cards.find(c => c.id === req.params.id && c.userId === req.user.id);
   if (!card) return res.status(404).json({ error: 'Not found' });
   const txs = transactions.filter(t => t.cardId === req.params.id);
-  res.json({ transactions: txs, total: txs.length, page: 1, pages: 1 });
+  res.json({ transactions: txs.map(txRes), total: txs.length, page: 1, pages: 1 });
 });
 
 // Simulate a new live transaction
@@ -194,7 +194,7 @@ app.get('/api/rewards/history', auth, (req, res) => {
   const txs = transactions.filter(t =>
     cards.find(c => c.id === t.cardId && c.userId === req.user.id) && t.cashbackAmount > 0
   );
-  res.json({ transactions: txs, total: txs.length, page: 1, pages: 1 });
+  res.json({ transactions: txs.map(txRes), total: txs.length, page: 1, pages: 1 });
 });
 
 // ─── Statements ────────────────────────────────────────────────────────────
@@ -217,6 +217,17 @@ app.get('/api/statements/summary', auth, (req, res) => {
 
 function safeUser(u) {
   return { id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, rewardsBalance: u.rewardsBalance, totalCashback: u.totalCashback, kycStatus: u.kycStatus };
+}
+
+// iOS app expects _id (MongoDB style) and currency field
+function cardRes(c) {
+  const { id, ...rest } = c;
+  return { _id: id, ...rest };
+}
+
+function txRes(t) {
+  const { id, ...rest } = t;
+  return { _id: id, currency: 'usd', merchantCategory: rest.rewardCategory || null, ...rest };
 }
 
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
