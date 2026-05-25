@@ -40,7 +40,12 @@
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
     <key>API_BASE_URL</key>
-    <string>https://api.yoursmartcard.com/api</string>
+    <string>http://localhost:3000/api</string>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+    </dict>
     <key>NSCameraUsageDescription</key>
     <string>Used to scan card details</string>
     <key>NSFaceIDUsageDescription</key>
