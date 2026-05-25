@@ -24,7 +24,6 @@
 		A1000015 /* UserModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000015 /* UserModel.swift */; };
 		A1000016 /* CardModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000016 /* CardModel.swift */; };
 		A1000017 /* TransactionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000017 /* TransactionModel.swift */; };
-		A1000018 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A2000018 /* Info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -188,7 +187,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A1000018 /* Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

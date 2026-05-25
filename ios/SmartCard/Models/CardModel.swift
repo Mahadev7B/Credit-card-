@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-struct Card: Codable, Identifiable {
+struct Card: Codable, Identifiable, Hashable {
     let id: String
     let last4: String
     let expMonth: Int
