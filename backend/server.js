@@ -72,12 +72,12 @@ app.use('/api/recommend', recommendRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
-// Serve the website folder as static files
-const websiteDir = path.join(__dirname, '..', 'website');
-app.use(express.static(websiteDir));
-// Catch-all: serve index.html for any non-API route (SPA-style)
+// Serve the website (lives in backend/public so it deploys with the backend)
+const publicDir = path.join(__dirname, 'public');
+app.use(express.static(publicDir));
+// Catch-all: serve index.html for any non-API route
 app.get('*', (req, res) => {
-  res.sendFile(path.join(websiteDir, 'index.html'));
+  res.sendFile(path.join(publicDir, 'index.html'));
 });
 
 // Error handler
