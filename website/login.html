@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://universal-smart-card.onrender.com; img-src 'self' data:; form-action 'self';">
+<meta name="referrer" content="no-referrer">
+<title>Sign In — Universal SmartCard</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --primary: #B5D300;
+  --primary-dark: #8FA800;
+  --dark: #0F1A00;
+  --text: #1a1a1a;
+  --text2: #666;
+  --bg: #FAFFF0;
+  --white: #ffffff;
+  --error: #D32F2F;
+  --radius: 12px;
+  --input-border: #d0d0d0;
+  --input-focus: #B5D300;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Nav ── */
+nav {
+  background: rgba(250,255,240,0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(181,211,0,0.2);
+  padding: 16px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo { font-size: 20px; font-weight: 800; color: var(--dark); text-decoration: none; letter-spacing: -0.5px; }
+.logo span { color: var(--primary-dark); }
+nav a { color: var(--text2); text-decoration: none; font-size: 14px; }
+nav a:hover { color: var(--primary-dark); }
+
+/* ── Main layout ── */
+main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+}
+
+.auth-card {
+  background: var(--white);
+  border-radius: 20px;
+  padding: 48px 40px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.10);
+  border: 1px solid rgba(181,211,0,0.15);
+}
+
+.auth-card h1 {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--dark);
+  margin-bottom: 6px;
+  letter-spacing: -0.5px;
+}
+.auth-card .subtitle {
+  font-size: 15px;
+  color: var(--text2);
+  margin-bottom: 32px;
+}
+
+/* ── Form ── */
+.form-group { margin-bottom: 20px; }
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+input[type="email"],
+input[type="password"],
+input[type="text"] {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--input-border);
+  border-radius: var(--radius);
+  font-size: 15px;
+  color: var(--text);
+  background: #fafafa;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+  -webkit-appearance: none;
+}
+input:focus {
+  border-color: var(--input-focus);
+  box-shadow: 0 0 0 3px rgba(181,211,0,0.18);
+  background: var(--white);
+}
+input.error-field { border-color: var(--error); }
+
+.password-wrap { position: relative; }
+.toggle-pw {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text2);
+  font-size: 13px;
+  padding: 4px;
+  user-select: none;
+}
+.toggle-pw:focus { outline: 2px solid var(--primary); border-radius: 4px; }
+
+.forgot-link {
+  display: block;
+  text-align: right;
+  font-size: 13px;
+  color: var(--primary-dark);
+  text-decoration: none;
+  margin-top: 6px;
+}
+.forgot-link:hover { text-decoration: underline; }
+
+/* ── Submit button ── */
+.btn-primary {
+  width: 100%;
+  padding: 14px;
+  background: var(--primary);
+  color: var(--dark);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  margin-top: 8px;
+  letter-spacing: -0.2px;
+}
+.btn-primary:hover { background: var(--primary-dark); color: var(--white); }
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+/* ── Messages ── */
+.error-msg {
+  display: none;
+  background: #fff5f5;
+  border: 1px solid #ffcdd2;
+  color: var(--error);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  margin-bottom: 18px;
+}
+.error-msg.show { display: block; }
+
+.field-error {
+  display: none;
+  color: var(--error);
+  font-size: 12px;
+  margin-top: 4px;
+}
+.field-error.show { display: block; }
+
+/* ── Divider ── */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0;
+}
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e0e0e0;
+}
+.divider span { font-size: 13px; color: var(--text2); }
+
+/* ── Footer link ── */
+.auth-footer {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 14px;
+  color: var(--text2);
+}
+.auth-footer a {
+  color: var(--primary-dark);
+  font-weight: 600;
+  text-decoration: none;
+}
+.auth-footer a:hover { text-decoration: underline; }
+
+/* ── Security badge ── */
+.security-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 20px;
+  font-size: 12px;
+  color: var(--text2);
+}
+.security-note::before { content: '🔒'; font-size: 13px; }
+
+/* ── Spinner ── */
+.spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(0,0,0,0.2);
+  border-top-color: var(--dark);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── MFA step ── */
+#mfa-step { display: none; }
+#mfa-step.show { display: block; }
+#login-step.hide { display: none; }
+
+.otp-inputs {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 20px 0;
+}
+.otp-inputs input {
+  width: 48px;
+  height: 56px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 0;
+}
+
+/* ── Rate limit notice ── */
+.lockout-notice {
+  display: none;
+  text-align: center;
+  color: var(--error);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+.lockout-notice.show { display: block; }
+
+footer {
+  text-align: center;
+  padding: 24px;
+  font-size: 13px;
+  color: var(--text2);
+  border-top: 1px solid #eee;
+}
+footer a { color: var(--text2); text-decoration: none; margin: 0 8px; }
+footer a:hover { color: var(--primary-dark); }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="logo">Universal<span>SmartCard</span></a>
+  <a href="signup.html">Create account →</a>
+</nav>
+
+<main>
+  <div class="auth-card">
+
+    <!-- Login step -->
+    <div id="login-step">
+      <h1>Welcome back</h1>
+      <p class="subtitle">Sign in to manage your cards and rewards</p>
+
+      <div class="error-msg" id="login-error" role="alert"></div>
+      <div class="lockout-notice" id="lockout-notice"></div>
+
+      <form id="login-form" novalidate autocomplete="on">
+        <div class="form-group">
+          <label for="email">Email address</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            autocomplete="email"
+            placeholder="you@example.com"
+            required
+            maxlength="254"
+            inputmode="email"
+          />
+          <span class="field-error" id="email-error">Please enter a valid email address.</span>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="password-wrap">
+            <input
+              type="password"
+              id="password"
+              name="password"
+              autocomplete="current-password"
+              placeholder="Your password"
+              required
+              minlength="8"
+              maxlength="128"
+            />
+            <button type="button" class="toggle-pw" id="toggle-pw" aria-label="Show password">Show</button>
+          </div>
+          <a href="forgot-password.html" class="forgot-link">Forgot password?</a>
+          <span class="field-error" id="password-error">Password is required.</span>
+        </div>
+
+        <button type="submit" class="btn-primary" id="login-btn">Sign in</button>
+      </form>
+
+      <div class="divider"><span>New to SmartCard?</span></div>
+
+      <div class="auth-footer">
+        <a href="signup.html">Create a free account →</a>
+      </div>
+    </div>
+
+    <!-- MFA step (shown after successful password) -->
+    <div id="mfa-step">
+      <h1>Verify it's you</h1>
+      <p class="subtitle">Enter the 6-digit code sent to your email</p>
+
+      <div class="error-msg" id="mfa-error" role="alert"></div>
+
+      <div class="otp-inputs" id="otp-inputs" aria-label="One-time code">
+        <input type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" autocomplete="one-time-code" aria-label="Digit 1">
+        <input type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" aria-label="Digit 2">
+        <input type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" aria-label="Digit 3">
+        <input type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" aria-label="Digit 4">
+        <input type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" aria-label="Digit 5">
+        <input type="text" inputmode="numeric" pattern="[0-9]" maxlength="1" aria-label="Digit 6">
+      </div>
+
+      <button type="button" class="btn-primary" id="verify-btn">Verify</button>
+      <div class="auth-footer" style="margin-top:16px">
+        <a href="#" id="resend-code">Resend code</a>
+      </div>
+    </div>
+
+    <p class="security-note">256-bit encryption · SOC 2 compliant</p>
+  </div>
+</main>
+
+<footer>
+  <a href="index.html">Home</a>
+  <a href="#">Privacy</a>
+  <a href="#">Terms</a>
+  <a href="#">Security</a>
+  © 2026 Universal SmartCard
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:3000/api'
+    : 'https://universal-smart-card.onrender.com/api';
+
+  // ── Client-side rate limiting ──
+  const MAX_ATTEMPTS = 5;
+  const LOCKOUT_MS = 15 * 60 * 1000;
+  const ATTEMPT_KEY = 'sc_login_attempts';
+  const LOCKOUT_KEY = 'sc_lockout_until';
+
+  function getAttempts() {
+    try { return JSON.parse(sessionStorage.getItem(ATTEMPT_KEY)) || 0; } catch { return 0; }
+  }
+  function setAttempts(n) {
+    try { sessionStorage.setItem(ATTEMPT_KEY, JSON.stringify(n)); } catch {}
+  }
+  function getLockoutUntil() {
+    try { return parseInt(sessionStorage.getItem(LOCKOUT_KEY)) || 0; } catch { return 0; }
+  }
+  function setLockout() {
+    try { sessionStorage.setItem(LOCKOUT_KEY, Date.now() + LOCKOUT_MS); } catch {}
+  }
+  function clearAttempts() {
+    try { sessionStorage.removeItem(ATTEMPT_KEY); sessionStorage.removeItem(LOCKOUT_KEY); } catch {}
+  }
+
+  function isLockedOut() {
+    const until = getLockoutUntil();
+    if (until && Date.now() < until) return true;
+    if (until && Date.now() >= until) { clearAttempts(); }
+    return false;
+  }
+
+  function showLockout() {
+    const until = getLockoutUntil();
+    const mins = Math.ceil((until - Date.now()) / 60000);
+    const el = document.getElementById('lockout-notice');
+    el.textContent = `Too many attempts. Try again in ${mins} minute${mins !== 1 ? 's' : ''}.`;
+    el.classList.add('show');
+    document.getElementById('login-btn').disabled = true;
+  }
+
+  // ── DOM refs ──
+  const form = document.getElementById('login-form');
+  const emailInput = document.getElementById('email');
+  const pwInput = document.getElementById('password');
+  const togglePw = document.getElementById('toggle-pw');
+  const loginBtn = document.getElementById('login-btn');
+  const loginError = document.getElementById('login-error');
+  const emailError = document.getElementById('email-error');
+  const pwError = document.getElementById('password-error');
+
+  // ── Toggle password visibility ──
+  togglePw.addEventListener('click', () => {
+    const show = pwInput.type === 'password';
+    pwInput.type = show ? 'text' : 'password';
+    togglePw.textContent = show ? 'Hide' : 'Show';
+    pwInput.focus();
+  });
+
+  // ── Field validation ──
+  function validateEmail(val) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(val.trim());
+  }
+
+  function clearErrors() {
+    loginError.classList.remove('show');
+    emailInput.classList.remove('error-field');
+    pwInput.classList.remove('error-field');
+    emailError.classList.remove('show');
+    pwError.classList.remove('show');
+  }
+
+  function showError(msg) {
+    loginError.textContent = msg;
+    loginError.classList.add('show');
+  }
+
+  // ── Submit ──
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearErrors();
+
+    if (isLockedOut()) { showLockout(); return; }
+
+    const email = emailInput.value.trim();
+    const password = pwInput.value;
+
+    let valid = true;
+    if (!validateEmail(email)) {
+      emailInput.classList.add('error-field');
+      emailError.classList.add('show');
+      valid = false;
+    }
+    if (!password) {
+      pwInput.classList.add('error-field');
+      pwError.classList.add('show');
+      valid = false;
+    }
+    if (!valid) return;
+
+    loginBtn.disabled = true;
+    loginBtn.innerHTML = '<span class="spinner"></span>Signing in…';
+
+    try {
+      const res = await fetch(`${API}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({ email, password }),
+        credentials: 'omit',
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const attempts = getAttempts() + 1;
+        setAttempts(attempts);
+        if (attempts >= MAX_ATTEMPTS) {
+          setLockout();
+          showLockout();
+        } else {
+          const remaining = MAX_ATTEMPTS - attempts;
+          showError(
+            data.error === 'Invalid credentials'
+              ? `Incorrect email or password. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`
+              : (data.error || 'Sign in failed. Please try again.')
+          );
+        }
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Sign in';
+        return;
+      }
+
+      // Success
+      clearAttempts();
+      // Store token securely (httpOnly cookie is ideal; localStorage acceptable for MVP)
+      // Never store in cookie without Secure + SameSite flags
+      try {
+        sessionStorage.setItem('sc_token', data.token);
+      } catch {}
+
+      // Redirect to dashboard
+      window.location.href = 'dashboard.html';
+
+    } catch (err) {
+      showError('Network error. Please check your connection and try again.');
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Sign in';
+    }
+  });
+
+  // ── OTP digit auto-advance ──
+  const otpInputs = Array.from(document.querySelectorAll('#otp-inputs input'));
+  otpInputs.forEach((inp, i) => {
+    inp.addEventListener('input', () => {
+      inp.value = inp.value.replace(/[^0-9]/g, '');
+      if (inp.value && i < otpInputs.length - 1) otpInputs[i + 1].focus();
+    });
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !inp.value && i > 0) otpInputs[i - 1].focus();
+    });
+    inp.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+      otpInputs.forEach((el, j) => { el.value = text[j] || ''; });
+      if (text.length >= otpInputs.length) otpInputs[otpInputs.length - 1].focus();
+    });
+  });
+
+  // ── Check if already locked out on page load ──
+  if (isLockedOut()) showLockout();
+
+})();
+</script>
+</body>
+</html>
