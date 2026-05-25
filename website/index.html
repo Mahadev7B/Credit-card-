@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Universal SmartCard — Always Use the Right Card</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --primary: #B5D300;
+  --primary-dark: #8FA800;
+  --primary-light: #E8F5A3;
+  --dark: #0F1A00;
+  --dark2: #1E3300;
+  --text: #1a1a1a;
+  --text2: #555;
+  --bg: #FAFFF0;
+  --white: #ffffff;
+  --radius: 16px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+
+/* ── Nav ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: rgba(250,255,240,0.92); backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(181,211,0,0.2);
+  padding: 16px 40px; display: flex; align-items: center; justify-content: space-between;
+}
+.nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.nav-logo-icon { width: 36px; height: 36px; background: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.nav-logo-icon svg { width: 20px; height: 20px; }
+.nav-logo-text { font-size: 18px; font-weight: 700; color: var(--dark); }
+.nav-links { display: flex; align-items: center; gap: 32px; }
+.nav-links a { text-decoration: none; color: var(--text2); font-size: 15px; font-weight: 500; transition: color .15s; }
+.nav-links a:hover { color: var(--dark); }
+.nav-cta { background: var(--primary); color: var(--dark); padding: 10px 22px; border-radius: 50px; font-size: 15px; font-weight: 700; text-decoration: none; transition: background .15s, transform .1s; }
+.nav-cta:hover { background: var(--primary-dark); transform: scale(1.02); }
+
+/* ── Hero ── */
+.hero {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  padding: 120px 40px 80px; text-align: center;
+  background: radial-gradient(ellipse at 50% 0%, rgba(181,211,0,0.15) 0%, transparent 70%);
+}
+.hero-inner { max-width: 780px; }
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--primary-light); color: var(--dark2);
+  padding: 8px 18px; border-radius: 50px; font-size: 13px; font-weight: 700;
+  letter-spacing: .5px; text-transform: uppercase; margin-bottom: 28px;
+}
+.hero-badge::before { content: '●'; color: var(--primary-dark); font-size: 8px; }
+.hero h1 {
+  font-size: clamp(42px, 7vw, 72px); font-weight: 800;
+  line-height: 1.08; letter-spacing: -2px; color: var(--dark);
+  margin-bottom: 24px;
+}
+.hero h1 span { color: var(--primary-dark); }
+.hero p {
+  font-size: clamp(17px, 2.5vw, 21px); color: var(--text2);
+  line-height: 1.6; max-width: 560px; margin: 0 auto 40px;
+}
+.hero-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+.btn-primary {
+  background: var(--primary); color: var(--dark); padding: 16px 36px;
+  border-radius: 50px; font-size: 17px; font-weight: 700; text-decoration: none;
+  transition: all .15s; display: inline-flex; align-items: center; gap: 8px;
+  box-shadow: 0 4px 20px rgba(181,211,0,0.4);
+}
+.btn-primary:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 8px 28px rgba(181,211,0,0.5); }
+.btn-secondary {
+  background: transparent; color: var(--dark); padding: 16px 36px;
+  border-radius: 50px; font-size: 17px; font-weight: 600; text-decoration: none;
+  border: 2px solid rgba(0,0,0,0.15); transition: all .15s;
+}
+.btn-secondary:hover { border-color: var(--primary-dark); color: var(--primary-dark); }
+
+/* ── Cards mockup ── */
+.hero-visual { margin-top: 64px; position: relative; display: flex; justify-content: center; }
+.card-stack { position: relative; width: 340px; height: 220px; }
+.mock-card {
+  position: absolute; width: 300px; height: 188px; border-radius: 20px;
+  padding: 24px; display: flex; flex-direction: column; justify-content: space-between;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+}
+.mock-card-1 { background: linear-gradient(135deg, #B5D300, #7A9400); top: 0; left: 40px; z-index: 3; }
+.mock-card-2 { background: linear-gradient(135deg, #8e8e99, #4a4a52); top: 16px; left: 20px; z-index: 2; transform: rotate(-4deg); }
+.mock-card-3 { background: linear-gradient(135deg, #007AFF, #0051a8); top: 20px; left: 60px; z-index: 1; transform: rotate(4deg); }
+.mock-card-name { color: rgba(255,255,255,.85); font-size: 14px; font-weight: 600; }
+.mock-card-number { color: #fff; font-family: monospace; font-size: 16px; letter-spacing: 2px; }
+.mock-card-bottom { display: flex; justify-content: space-between; }
+.mock-card-label { font-size: 8px; color: rgba(255,255,255,.6); text-transform: uppercase; letter-spacing: 1px; }
+.mock-card-value { font-size: 12px; color: #fff; font-weight: 600; }
+
+/* Recommendation bubble */
+.rec-bubble {
+  position: absolute; right: -20px; top: 10px; z-index: 10;
+  background: var(--white); border-radius: 16px; padding: 12px 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15); min-width: 180px;
+  animation: float 3s ease-in-out infinite;
+}
+@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+.rec-bubble-label { font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; }
+.rec-bubble-card { font-size: 14px; font-weight: 700; color: var(--dark); margin: 4px 0 2px; }
+.rec-bubble-earn { font-size: 13px; color: var(--primary-dark); font-weight: 600; }
+
+/* ── Section ── */
+section { padding: 100px 40px; }
+.section-inner { max-width: 1100px; margin: 0 auto; }
+.section-badge { display: inline-block; background: var(--primary-light); color: var(--dark2); padding: 6px 16px; border-radius: 50px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 16px; }
+.section-title { font-size: clamp(32px, 5vw, 48px); font-weight: 800; letter-spacing: -1px; color: var(--dark); margin-bottom: 16px; line-height: 1.1; }
+.section-sub { font-size: 18px; color: var(--text2); line-height: 1.6; max-width: 520px; }
+
+/* ── How it works ── */
+.how-bg { background: var(--dark); }
+.how-bg .section-title { color: var(--white); }
+.how-bg .section-sub { color: rgba(255,255,255,.6); }
+.how-bg .section-badge { background: rgba(181,211,0,.15); color: var(--primary); }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-top: 56px; }
+.step { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); border-radius: 20px; padding: 32px; }
+.step-number { width: 48px; height: 48px; background: var(--primary); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; color: var(--dark); margin-bottom: 20px; }
+.step h3 { font-size: 20px; font-weight: 700; color: var(--white); margin-bottom: 10px; }
+.step p { font-size: 15px; color: rgba(255,255,255,.55); line-height: 1.6; }
+
+/* ── Features ── */
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-top: 56px; }
+.feature { background: var(--white); border-radius: 24px; padding: 36px; box-shadow: var(--shadow); border: 1px solid rgba(181,211,0,.15); }
+.feature-icon { width: 56px; height: 56px; border-radius: 16px; background: var(--primary-light); display: flex; align-items: center; justify-content: center; font-size: 26px; margin-bottom: 20px; }
+.feature h3 { font-size: 22px; font-weight: 700; color: var(--dark); margin-bottom: 10px; }
+.feature p { font-size: 15px; color: var(--text2); line-height: 1.6; }
+
+/* ── Statement preview ── */
+.statement-preview { background: var(--white); border-radius: 24px; padding: 28px; box-shadow: var(--shadow); max-width: 480px; }
+.stmt-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.stmt-title { font-size: 16px; font-weight: 700; }
+.stmt-month { font-size: 13px; color: var(--text2); }
+.stmt-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+.stmt-row:last-child { border-bottom: none; }
+.stmt-card-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; flex-shrink: 0; }
+.stmt-card-name { font-size: 14px; font-weight: 500; display: flex; align-items: center; }
+.stmt-amount { font-size: 14px; font-weight: 600; }
+.stmt-cashback { font-size: 12px; color: #22a355; font-weight: 600; }
+.stmt-total { background: var(--primary-light); border-radius: 12px; padding: 14px 16px; margin-top: 16px; display: flex; justify-content: space-between; }
+.stmt-total-label { font-size: 14px; font-weight: 700; color: var(--dark2); }
+.stmt-total-value { font-size: 14px; font-weight: 800; color: var(--primary-dark); }
+
+/* ── Card section ── */
+.card-section { background: linear-gradient(135deg, var(--dark) 0%, var(--dark2) 100%); }
+.card-section .section-title { color: var(--white); }
+.card-section .section-sub { color: rgba(255,255,255,.6); }
+.card-section .section-badge { background: rgba(181,211,0,.15); color: var(--primary); }
+.card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; margin-top: 56px; }
+.card-type { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 24px; padding: 32px; }
+.card-type-icon { font-size: 40px; margin-bottom: 16px; }
+.card-type h3 { font-size: 22px; font-weight: 700; color: var(--white); margin-bottom: 10px; }
+.card-type p { font-size: 15px; color: rgba(255,255,255,.55); line-height: 1.6; margin-bottom: 20px; }
+.card-type-badge { display: inline-block; padding: 6px 14px; border-radius: 50px; font-size: 12px; font-weight: 700; }
+.badge-instant { background: rgba(181,211,0,.15); color: var(--primary); }
+.badge-ship { background: rgba(255,255,255,.1); color: rgba(255,255,255,.7); }
+
+/* ── CTA ── */
+.cta-section { background: var(--primary); text-align: center; padding: 100px 40px; }
+.cta-section h2 { font-size: clamp(36px, 6vw, 56px); font-weight: 800; color: var(--dark); letter-spacing: -1.5px; margin-bottom: 20px; }
+.cta-section p { font-size: 19px; color: var(--dark2); opacity: .8; margin-bottom: 40px; }
+.btn-dark { background: var(--dark); color: var(--white); padding: 18px 40px; border-radius: 50px; font-size: 17px; font-weight: 700; text-decoration: none; display: inline-block; transition: all .15s; }
+.btn-dark:hover { background: var(--dark2); transform: translateY(-2px); }
+
+/* ── Footer ── */
+footer { background: var(--dark); padding: 48px 40px; }
+.footer-inner { max-width: 1100px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+.footer-logo { font-size: 18px; font-weight: 700; color: var(--white); }
+.footer-links { display: flex; gap: 24px; }
+.footer-links a { color: rgba(255,255,255,.4); text-decoration: none; font-size: 14px; transition: color .15s; }
+.footer-links a:hover { color: rgba(255,255,255,.8); }
+.footer-copy { color: rgba(255,255,255,.3); font-size: 13px; width: 100%; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  nav { padding: 14px 20px; }
+  .nav-links { display: none; }
+  section { padding: 70px 20px; }
+  .card-grid { grid-template-columns: 1fr; }
+  .hero { padding: 100px 20px 60px; }
+  .rec-bubble { right: -10px; }
+  .footer-inner { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Nav ── -->
+<nav>
+  <a class="nav-logo" href="#">
+    <div class="nav-logo-icon">
+      <svg viewBox="0 0 20 20" fill="none">
+        <rect x="2" y="6" width="16" height="10" rx="2" fill="#0F1A00" opacity=".9"/>
+        <rect x="2" y="9" width="16" height="3" fill="#0F1A00" opacity=".3"/>
+        <rect x="4" y="12" width="5" height="2" rx="1" fill="#0F1A00" opacity=".6"/>
+      </svg>
+    </div>
+    <span class="nav-logo-text">Universal SmartCard</span>
+  </a>
+  <div class="nav-links">
+    <a href="#how">How it works</a>
+    <a href="#features">Features</a>
+    <a href="#cards">Cards</a>
+  </div>
+  <a href="#signup" class="nav-cta">Get Started</a>
+</nav>
+
+<!-- ── Hero ── -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">Smart Card Recommendations</div>
+    <h1>Always use the<br><span>right card</span>,<br>every time.</h1>
+    <p>One app that tracks all your cards, tells you which one earns the most at every merchant, and consolidates everything into one statement.</p>
+    <div class="hero-buttons">
+      <a href="#signup" class="btn-primary">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2L11.5 7H17L12.5 10.5L14.5 16L9 12.5L3.5 16L5.5 10.5L1 7H6.5L9 2Z" fill="currentColor"/></svg>
+        Get Early Access
+      </a>
+      <a href="#how" class="btn-secondary">See how it works</a>
+    </div>
+
+    <div class="hero-visual">
+      <div class="card-stack">
+        <div class="mock-card mock-card-3">
+          <div class="mock-card-name">Travel Card</div>
+          <div class="mock-card-number">•••• 8888</div>
+          <div class="mock-card-bottom">
+            <div><div class="mock-card-label">Expires</div><div class="mock-card-value">09/27</div></div>
+            <div><div class="mock-card-label">Network</div><div class="mock-card-value">Visa</div></div>
+          </div>
+        </div>
+        <div class="mock-card mock-card-2">
+          <div class="mock-card-name">Daily Driver</div>
+          <div class="mock-card-number">•••• 4242</div>
+          <div class="mock-card-bottom">
+            <div><div class="mock-card-label">Expires</div><div class="mock-card-value">12/28</div></div>
+            <div><div class="mock-card-label">Network</div><div class="mock-card-value">Visa</div></div>
+          </div>
+        </div>
+        <div class="mock-card mock-card-1">
+          <div class="mock-card-name">Smart Card ✦</div>
+          <div class="mock-card-number">•••• 7777</div>
+          <div class="mock-card-bottom">
+            <div><div class="mock-card-label">Expires</div><div class="mock-card-value">12/29</div></div>
+            <div><div class="mock-card-label">Network</div><div class="mock-card-value">Visa</div></div>
+          </div>
+        </div>
+        <div class="rec-bubble">
+          <div class="rec-bubble-label">Best card here</div>
+          <div class="rec-bubble-card">✦ Smart Card</div>
+          <div class="rec-bubble-earn">Earn 4% → $3.20 back</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── How it works ── -->
+<section class="how-bg" id="how">
+  <div class="section-inner">
+    <div class="section-badge">How it works</div>
+    <div class="section-title">Three steps to maximum rewards</div>
+    <div class="section-sub">No more guessing which card to use. We do the math for you.</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <h3>Add your cards</h3>
+        <p>Add all your existing cards — Visa, Mastercard, Amex, whatever you have. Plus get your free Smart Card instantly.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <h3>Shop anywhere</h3>
+        <p>At checkout — online or in store — our app instantly tells you which card earns the most at that exact merchant.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <h3>See it all in one place</h3>
+        <p>Every transaction, every card, every reward — in one app. Download one consolidated statement at the end of the month.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">4</div>
+        <h3>Never miss rewards again</h3>
+        <p>Most people leave hundreds of dollars in unclaimed rewards every year. Not anymore.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Features ── -->
+<section id="features">
+  <div class="section-inner">
+    <div class="section-badge">Features</div>
+    <div class="section-title">Everything in one app</div>
+    <div class="section-sub">Built for people who have multiple cards and want to get the most out of every purchase.</div>
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">🧠</div>
+        <h3>Smart Recommendations</h3>
+        <p>Real-time suggestions at checkout. We analyze your cards' reward structures and tell you exactly which one to use at every merchant category.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📄</div>
+        <h3>Consolidated Statements</h3>
+        <p>One PDF. All your cards. Every month. No more logging into five different bank apps to piece together where your money went.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">💳</div>
+        <h3>Your Smart Card</h3>
+        <p>A Visa card that fills the gaps. When none of your existing cards are optimal, your Smart Card steps in to earn the best available rate.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📊</div>
+        <h3>Rewards Tracking</h3>
+        <p>See exactly how much cashback you've earned across all your cards. Track trends, spot opportunities, and maximize every dollar spent.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🔒</div>
+        <h3>Instant Card Controls</h3>
+        <p>Freeze, unfreeze, set spending limits — all from the app. Full control over your Smart Card at any time.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">⚡</div>
+        <h3>Real-time Alerts</h3>
+        <p>Get notified the moment a transaction happens. Know instantly when you earn cashback or if something looks suspicious.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Consolidated Statement Preview ── -->
+<section style="background: var(--primary-light); padding: 80px 40px;">
+  <div class="section-inner" style="display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;">
+    <div>
+      <div class="section-badge">Consolidated Statements</div>
+      <div class="section-title">One statement.<br>All your cards.</div>
+      <p style="font-size:17px;color:var(--text2);line-height:1.6;margin-top:16px;">Stop logging into multiple bank accounts to download statements. Universal SmartCard pulls everything together — every card, every transaction — into one clean monthly report.</p>
+    </div>
+    <div class="statement-preview">
+      <div class="stmt-header">
+        <div class="stmt-title">May 2026 Statement</div>
+        <div class="stmt-month">All Cards</div>
+      </div>
+      <div class="stmt-row">
+        <div class="stmt-card-name"><div class="stmt-card-dot" style="background:#B5D300"></div>Smart Card</div>
+        <div style="text-align:right"><div class="stmt-amount">$560.00</div><div class="stmt-cashback">+$22.40 cashback</div></div>
+      </div>
+      <div class="stmt-row">
+        <div class="stmt-card-name"><div class="stmt-card-dot" style="background:#007AFF"></div>Chase Sapphire</div>
+        <div style="text-align:right"><div class="stmt-amount">$1,240.00</div><div class="stmt-cashback">+$37.20 cashback</div></div>
+      </div>
+      <div class="stmt-row">
+        <div class="stmt-card-name"><div class="stmt-card-dot" style="background:#8e8e99"></div>Amex Gold</div>
+        <div style="text-align:right"><div class="stmt-amount">$890.00</div><div class="stmt-cashback">+$35.60 cashback</div></div>
+      </div>
+      <div class="stmt-row">
+        <div class="stmt-card-name"><div class="stmt-card-dot" style="background:#FF9500"></div>Citi Double Cash</div>
+        <div style="text-align:right"><div class="stmt-amount">$340.00</div><div class="stmt-cashback">+$6.80 cashback</div></div>
+      </div>
+      <div class="stmt-total">
+        <div>
+          <div class="stmt-total-label">Total Spend</div>
+          <div style="font-size:13px;color:var(--text2)">3,030.00</div>
+        </div>
+        <div style="text-align:right">
+          <div class="stmt-total-label">Total Earned</div>
+          <div class="stmt-total-value">$102.00 cashback</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Cards ── -->
+<section class="card-section" id="cards">
+  <div class="section-inner">
+    <div class="section-badge">Your Smart Card</div>
+    <div class="section-title">Virtual or physical — your choice</div>
+    <div class="section-sub">Get a Smart Card that fills the gaps where your existing cards fall short.</div>
+    <div class="card-grid">
+      <div class="card-type">
+        <div class="card-type-icon">📱</div>
+        <h3>Virtual Card</h3>
+        <p>Issued instantly. Use it for online purchases right away. Full card number, CVV, and expiry — ready to use at any online checkout.</p>
+        <span class="card-type-badge badge-instant">Available instantly</span>
+      </div>
+      <div class="card-type">
+        <div class="card-type-icon">💳</div>
+        <h3>Physical Card</h3>
+        <p>A real Visa card shipped to your home. Use it anywhere Visa is accepted — stores, restaurants, gas stations, ATMs.</p>
+        <span class="card-type-badge badge-ship">Ships in 5-7 days</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ── -->
+<section class="cta-section" id="signup">
+  <h2>Stop leaving money<br>on the table.</h2>
+  <p>Join the waitlist — free early access for first users.</p>
+  <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;max-width:480px;margin:0 auto">
+    <input type="email" placeholder="your@email.com" style="flex:1;padding:16px 20px;border-radius:50px;border:none;font-size:16px;min-width:200px;outline:none;"/>
+    <a href="#" class="btn-dark">Join Waitlist</a>
+  </div>
+  <p style="margin-top:20px;font-size:13px;opacity:.6">No spam. No credit card required. iOS app coming soon.</p>
+</section>
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-logo">Universal SmartCard</div>
+    <div class="footer-links">
+      <a href="#">Privacy Policy</a>
+      <a href="#">Terms of Service</a>
+      <a href="#">Contact</a>
+    </div>
+    <div class="footer-copy">© 2026 Universal SmartCard. All rights reserved. Cards issued by Stripe Issuing.</div>
+  </div>
+</footer>
+
+</body>
+</html>
