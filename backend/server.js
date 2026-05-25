@@ -70,7 +70,12 @@ app.use('/api/statements', statementRoutes);
 app.use('/api/rewards', rewardsRoutes);
 app.use('/api/recommend', recommendRoutes);
 
-app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+app.get('/health', (req, res) => res.json({
+  status: 'ok',
+  timestamp: new Date().toISOString(),
+  publicDir,
+  publicExists: require('fs').existsSync(publicDir),
+}));
 
 // Serve the website (lives in backend/public so it deploys with the backend)
 const publicDir = path.join(__dirname, 'public');
@@ -100,11 +105,17 @@ cron.schedule('0 3 * * 0', async () => {
 });
 
 async function start() {
-  await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/smartcard');
-  logger.info('Connected to MongoDB');
-
   const port = process.env.PORT || 3000;
+
+  // Start HTTP server immediately so the web app is reachable even if DB is slow
   app.listen(port, () => logger.info(`Server running on port ${port}`));
+
+  try {
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/smartcard');
+    logger.info('Connected to MongoDB');
+  } catch (err) {
+    logger.error('MongoDB connection failed — API routes unavailable, static site still up', err);
+  }
 }
 
 start().catch((err) => {
