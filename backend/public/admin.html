@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Universal SmartCard</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --primary: #B5D300; --dark: #0F1A00; --text: #1a1a1a; --text2: #666;
+  --bg: #F4F7F0; --white: #fff; --green: #2E7D32; --red: #C62828; --orange: #E65100;
+  --radius: 12px; --shadow: 0 2px 16px rgba(0,0,0,0.07);
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+header {
+  background: var(--dark); color: #fff; padding: 0 32px;
+  display: flex; align-items: center; justify-content: space-between; height: 60px;
+}
+header .logo { font-weight: 800; font-size: 16px; }
+header .logo span { color: var(--primary); }
+header .badge { background: var(--red); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-left: 10px; }
+header .signout { color: rgba(255,255,255,0.6); font-size: 13px; cursor: pointer; background: none; border: none; }
+header .signout:hover { color: #fff; }
+
+.page { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+h1 { font-size: 24px; font-weight: 800; margin-bottom: 24px; }
+
+/* Stats row */
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+.stat-card { background: var(--white); border-radius: var(--radius); padding: 20px 24px; box-shadow: var(--shadow); }
+.stat-card .stat-val { font-size: 32px; font-weight: 800; color: var(--dark); }
+.stat-card .stat-label { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+/* Users table */
+.card { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 24px; }
+.card-header { padding: 18px 24px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; gap: 12px; }
+.card-header h2 { font-size: 16px; font-weight: 700; flex: 1; }
+.search-box { padding: 8px 12px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 14px; outline: none; width: 220px; }
+.search-box:focus { border-color: var(--primary); }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .4px; border-bottom: 1px solid #f0f0f0; background: #fafafa; }
+td { padding: 12px 16px; border-bottom: 1px solid #f9f9f9; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #fafef0; }
+
+.badge-status { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.badge-status.active { background: #e8f5e9; color: var(--green); }
+.badge-status.inactive { background: #fdecea; color: var(--red); }
+.badge-kyc { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.badge-kyc.approved { background: #e8f5e9; color: var(--green); }
+.badge-kyc.pending { background: #fff8e1; color: #f57f17; }
+.badge-kyc.rejected { background: #fdecea; color: var(--red); }
+
+.btn { padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; }
+.btn-sm-red { background: #fdecea; color: var(--red); }
+.btn-sm-green { background: #e8f5e9; color: var(--green); }
+.btn-sm-blue { background: #e3f2fd; color: #1565C0; }
+
+.pagination { display: flex; align-items: center; gap: 8px; padding: 16px 24px; border-top: 1px solid #f0f0f0; }
+.pagination button { padding: 6px 14px; border: 1.5px solid #ddd; border-radius: 6px; font-size: 13px; cursor: pointer; background: none; }
+.pagination button:disabled { opacity: 0.4; cursor: default; }
+.pagination button.active { background: var(--primary); border-color: var(--primary); font-weight: 700; }
+.pagination .info { flex: 1; text-align: center; font-size: 13px; color: var(--text2); }
+
+/* User detail modal */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+.overlay.show { display: flex; }
+.modal { background: var(--white); border-radius: 18px; padding: 28px; width: 100%; max-width: 560px; max-height: 80vh; overflow-y: auto; }
+.modal h2 { font-size: 18px; font-weight: 800; margin-bottom: 16px; }
+.detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f5f5f5; font-size: 14px; }
+.detail-row:last-child { border-bottom: none; }
+.detail-label { color: var(--text2); }
+.detail-val { font-weight: 600; }
+.modal-actions { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+.btn-close { padding: 10px 20px; border: 1.5px solid #ddd; border-radius: 8px; background: none; font-size: 14px; cursor: pointer; }
+
+.empty { text-align: center; padding: 48px; color: var(--text2); }
+.spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid #ddd; border-top-color: #333; border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-row td { text-align: center; padding: 32px; }
+
+@media (max-width: 768px) {
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  th:nth-child(n+4), td:nth-child(n+4) { display: none; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Universal <span>SmartCard</span> <span class="badge">ADMIN</span></div>
+  <button class="signout" id="signout-btn">Sign out</button>
+</header>
+
+<div class="page">
+  <h1>Admin Dashboard</h1>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-val" id="stat-users">—</div>
+      <div class="stat-label">Total Users</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="stat-cards">—</div>
+      <div class="stat-label">SmartCards Issued</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="stat-tx">—</div>
+      <div class="stat-label">Transactions</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="stat-active">—</div>
+      <div class="stat-label">Active Today</div>
+    </div>
+  </div>
+
+  <!-- Users table -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Users</h2>
+      <input class="search-box" id="search" placeholder="Search name or email…" oninput="debouncedSearch(this.value)" />
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Name / Email</th>
+          <th>Signed Up</th>
+          <th>Last Login</th>
+          <th>SmartCards</th>
+          <th>Linked Cards</th>
+          <th>Status</th>
+          <th>KYC</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="user-tbody">
+        <tr class="loading-row"><td colspan="8"><span class="spinner"></span></td></tr>
+      </tbody>
+    </table>
+    <div class="pagination">
+      <button id="btn-prev" onclick="changePage(-1)">← Prev</button>
+      <div class="info" id="page-info"></div>
+      <button id="btn-next" onclick="changePage(1)">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- User Detail Modal -->
+<div class="overlay" id="user-modal">
+  <div class="modal">
+    <h2 id="modal-name">User Details</h2>
+    <div id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions"></div>
+    <button class="btn-close" style="margin-top:10px;width:100%" onclick="closeModal()">Close</button>
+  </div>
+</div>
+
+<script>
+(function () {
+'use strict';
+
+const API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:3000/api'
+  : 'https://universal-smart-card.onrender.com/api';
+
+let token = sessionStorage.getItem('sc_token') || localStorage.getItem('sc_token');
+if (!token) { location.href = 'login.html'; }
+
+let currentPage = 1;
+let totalPages = 1;
+let searchQuery = '';
+let searchTimer = null;
+
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(API + path, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token,
+      'X-Requested-With': 'XMLHttpRequest',
+      ...(opts.headers || {}),
+    },
+  });
+  if (res.status === 401) { sessionStorage.removeItem('sc_token'); location.href = 'login.html'; }
+  if (res.status === 403) {
+    document.body.innerHTML = '<div style="text-align:center;padding:80px;font-family:sans-serif"><h2>Access Denied</h2><p style="color:#666;margin-top:8px">Admin access required.</p><a href="dashboard.html" style="color:#8FA800;margin-top:16px;display:inline-block">← Back to Dashboard</a></div>';
+    return res;
+  }
+  return res;
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function fmtDateTime(d) {
+  if (!d) return 'Never';
+  return new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+function timeAgo(d) {
+  if (!d) return 'Never';
+  const diff = Date.now() - new Date(d);
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
+  if (diff < 604800000) return Math.floor(diff/86400000) + 'd ago';
+  return fmtDate(d);
+}
+
+async function loadStats() {
+  try {
+    const res = await apiFetch('/admin/stats');
+    if (!res.ok) return;
+    const d = await res.json();
+    document.getElementById('stat-users').textContent = d.totalUsers.toLocaleString();
+    document.getElementById('stat-cards').textContent = d.totalCards.toLocaleString();
+    document.getElementById('stat-tx').textContent = d.totalTx.toLocaleString();
+    document.getElementById('stat-active').textContent = d.activeToday.toLocaleString();
+  } catch {}
+}
+
+async function loadUsers() {
+  const tbody = document.getElementById('user-tbody');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="8"><span class="spinner"></span></td></tr>';
+
+  const params = new URLSearchParams({ page: currentPage, limit: 25 });
+  if (searchQuery) params.set('search', searchQuery);
+
+  try {
+    const res = await apiFetch('/admin/users?' + params);
+    if (!res.ok) return;
+    const data = await res.json();
+    totalPages = data.pages || 1;
+
+    document.getElementById('page-info').textContent =
+      `${data.users.length} of ${data.total} users — page ${currentPage} of ${totalPages}`;
+    document.getElementById('btn-prev').disabled = currentPage <= 1;
+    document.getElementById('btn-next').disabled = currentPage >= totalPages;
+
+    if (!data.users.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty">No users found</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = data.users.map(u => `
+      <tr>
+        <td>
+          <div style="font-weight:700">${u.firstName} ${u.lastName}</div>
+          <div style="font-size:12px;color:var(--text2)">${u.email}</div>
+        </td>
+        <td>${fmtDate(u.createdAt)}</td>
+        <td style="font-size:12px">${timeAgo(u.lastLoginAt)}</td>
+        <td>${u.smartCardCount} ${u.hasPhysical ? '<span style="font-size:10px;background:#e3f2fd;color:#1565c0;padding:1px 6px;border-radius:10px;font-weight:700">+physical</span>' : ''}</td>
+        <td>${u.linkedCardCount}</td>
+        <td><span class="badge-status ${u.isActive ? 'active' : 'inactive'}">${u.isActive ? 'Active' : 'Suspended'}</span></td>
+        <td><span class="badge-kyc ${u.kycStatus}">${u.kycStatus}</span></td>
+        <td><button class="btn btn-sm-blue" onclick="viewUser('${u._id}')">View</button></td>
+      </tr>
+    `).join('');
+  } catch { tbody.innerHTML = '<tr><td colspan="8" class="empty">Failed to load users</td></tr>'; }
+}
+
+function changePage(dir) {
+  currentPage = Math.max(1, Math.min(totalPages, currentPage + dir));
+  loadUsers();
+}
+
+function debouncedSearch(val) {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    searchQuery = val.trim();
+    currentPage = 1;
+    loadUsers();
+  }, 350);
+}
+
+let selectedUserId = null;
+
+async function viewUser(userId) {
+  selectedUserId = userId;
+  const modal = document.getElementById('user-modal');
+  document.getElementById('modal-body').innerHTML = '<div style="text-align:center;padding:24px"><span class="spinner"></span></div>';
+  document.getElementById('modal-actions').innerHTML = '';
+  modal.classList.add('show');
+
+  try {
+    const res = await apiFetch('/admin/users/' + userId);
+    if (!res.ok) return;
+    const { user, cards, txCount } = await res.json();
+
+    document.getElementById('modal-name').textContent = user.firstName + ' ' + user.lastName;
+
+    document.getElementById('modal-body').innerHTML = `
+      <div class="detail-row"><span class="detail-label">Email</span><span class="detail-val">${user.email}</span></div>
+      <div class="detail-row"><span class="detail-label">Phone</span><span class="detail-val">${user.phone || '—'}</span></div>
+      <div class="detail-row"><span class="detail-label">Signed Up</span><span class="detail-val">${fmtDateTime(user.createdAt)}</span></div>
+      <div class="detail-row"><span class="detail-label">Last Login</span><span class="detail-val">${fmtDateTime(user.lastLoginAt)}</span></div>
+      <div class="detail-row"><span class="detail-label">Role</span><span class="detail-val">${user.role}</span></div>
+      <div class="detail-row"><span class="detail-label">KYC Status</span><span class="detail-val">${user.kycStatus}</span></div>
+      <div class="detail-row"><span class="detail-label">Account Status</span><span class="detail-val">${user.isActive ? 'Active' : 'Suspended'}</span></div>
+      <div class="detail-row"><span class="detail-label">Rewards Balance</span><span class="detail-val">$${(user.rewardsBalance || 0).toFixed(2)}</span></div>
+      <div class="detail-row"><span class="detail-label">Total Cashback Earned</span><span class="detail-val">$${(user.totalCashback || 0).toFixed(2)}</span></div>
+      <div class="detail-row"><span class="detail-label">SmartCards</span><span class="detail-val">${cards.length} card${cards.length !== 1 ? 's' : ''} (${txCount} transactions)</span></div>
+      <div class="detail-row"><span class="detail-label">Linked External Cards</span><span class="detail-val">${user.linkedCards?.length || 0}</span></div>
+      <div class="detail-row"><span class="detail-label">Stripe Cardholder ID</span><span class="detail-val" style="font-size:12px;font-family:monospace">${user.stripeCardholderId || '—'}</span></div>
+      ${cards.length > 0 ? `
+        <div style="margin-top:16px;font-weight:700;font-size:13px;margin-bottom:8px">SmartCards</div>
+        ${cards.map(c => `
+          <div style="background:#f9f9f9;border-radius:8px;padding:10px 12px;margin-bottom:6px;font-size:13px">
+            <div style="display:flex;justify-content:space-between">
+              <span style="font-weight:600">${c.nickname || 'SmartCard'} — ••••${c.last4}</span>
+              <span style="color:${c.status === 'active' ? 'var(--green)' : 'var(--red)'}">${c.status}</span>
+            </div>
+            <div style="color:var(--text2);margin-top:2px">${c.type} · ${c.brand} · Expires ${String(c.expMonth).padStart(2,'0')}/${String(c.expYear).slice(-2)}</div>
+            ${c.type === 'physical' && c.shippingAddress ? `<div style="color:var(--text2);margin-top:2px">${c.shippingAddress.line1}, ${c.shippingAddress.city}, ${c.shippingAddress.state} · ${c.shippingStatus || 'pending'}</div>` : ''}
+          </div>
+        `).join('')}
+      ` : ''}
+    `;
+
+    document.getElementById('modal-actions').innerHTML = `
+      <button class="btn ${user.isActive ? 'btn-sm-red' : 'btn-sm-green'}" onclick="toggleUserActive('${user._id}', ${user.isActive})">
+        ${user.isActive ? 'Suspend Account' : 'Restore Account'}
+      </button>
+      <button class="btn btn-sm-blue" onclick="approveKyc('${user._id}')">Approve KYC</button>
+      ${user.role !== 'admin' ? `<button class="btn btn-sm-blue" onclick="makeAdmin('${user._id}')">Make Admin</button>` : ''}
+    `;
+  } catch {
+    document.getElementById('modal-body').innerHTML = '<p style="color:var(--red)">Failed to load user details.</p>';
+  }
+}
+
+async function toggleUserActive(userId, currentlyActive) {
+  const res = await apiFetch('/admin/users/' + userId, {
+    method: 'PATCH',
+    body: JSON.stringify({ isActive: !currentlyActive }),
+  });
+  if (res.ok) { closeModal(); loadUsers(); }
+}
+
+async function approveKyc(userId) {
+  const res = await apiFetch('/admin/users/' + userId, {
+    method: 'PATCH',
+    body: JSON.stringify({ kycStatus: 'approved' }),
+  });
+  if (res.ok) { viewUser(userId); loadUsers(); }
+}
+
+async function makeAdmin(userId) {
+  if (!confirm('Make this user an admin? They will have full access to this page.')) return;
+  const res = await apiFetch('/admin/users/' + userId, {
+    method: 'PATCH',
+    body: JSON.stringify({ role: 'admin' }),
+  });
+  if (res.ok) { viewUser(userId); }
+}
+
+function closeModal() { document.getElementById('user-modal').classList.remove('show'); }
+
+document.getElementById('signout-btn').addEventListener('click', () => {
+  sessionStorage.removeItem('sc_token');
+  localStorage.removeItem('sc_token');
+  location.href = 'login.html';
+});
+
+window.viewUser = viewUser;
+window.closeModal = closeModal;
+window.changePage = changePage;
+window.debouncedSearch = debouncedSearch;
+window.toggleUserActive = toggleUserActive;
+window.approveKyc = approveKyc;
+window.makeAdmin = makeAdmin;
+
+// Close modal on overlay click
+document.getElementById('user-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+loadStats();
+loadUsers();
+})();
+</script>
+</body>
+</html>

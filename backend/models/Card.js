@@ -16,6 +16,17 @@ const cardSchema = new mongoose.Schema(
     walletProvisioned: { type: Boolean, default: false },
     appleWalletPassId: { type: String },
     nickname: { type: String, trim: true },
+    shippingAddress: {
+      name: { type: String },
+      line1: { type: String },
+      line2: { type: String },
+      city: { type: String },
+      state: { type: String },
+      postalCode: { type: String },
+      country: { type: String, default: 'US' },
+    },
+    shippingStatus: { type: String, enum: ['pending', 'shipped', 'delivered', 'returned'] },
+    shippingEta: { type: Date },
     rewardsTier: { type: String, enum: ['standard', 'gold', 'platinum'], default: 'standard' },
     mccRewardsConfig: [
       {

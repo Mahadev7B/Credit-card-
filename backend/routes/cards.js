@@ -7,11 +7,22 @@ const Card = require('../models/Card');
 const Transaction = require('../models/Transaction');
 const logger = require('../config/logger');
 
+const shippingSchema = Joi.object({
+  name: Joi.string().max(100).required(),
+  line1: Joi.string().max(200).required(),
+  line2: Joi.string().max(200).allow('', null),
+  city: Joi.string().max(100).required(),
+  state: Joi.string().length(2).uppercase().required(),
+  postalCode: Joi.string().pattern(/^\d{5}(-\d{4})?$/).required(),
+  country: Joi.string().length(2).default('US'),
+});
+
 const createCardSchema = Joi.object({
   type: Joi.string().valid('virtual', 'physical').default('virtual'),
   nickname: Joi.string().max(50),
   spendingLimit: Joi.number().positive(),
   spendingLimitInterval: Joi.string().valid('daily', 'weekly', 'monthly', 'yearly'),
+  shipping: Joi.when('type', { is: 'physical', then: shippingSchema.required(), otherwise: Joi.forbidden() }),
 });
 
 router.use(authenticate);
@@ -40,6 +51,7 @@ router.post('/', async (req, res, next) => {
       type: value.type,
       spendingLimit: value.spendingLimit,
       spendingLimitInterval: value.spendingLimitInterval,
+      shipping: value.shipping,
     });
 
     const card = await Card.create({
@@ -54,6 +66,8 @@ router.post('/', async (req, res, next) => {
       nickname: value.nickname,
       spendingLimit: value.spendingLimit,
       spendingLimitInterval: value.spendingLimitInterval,
+      shippingAddress: value.shipping,
+      shippingStatus: value.type === 'physical' ? 'pending' : undefined,
     });
 
     logger.info({ msg: 'Card created', cardId: card._id, userId: req.user._id });

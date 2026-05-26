@@ -32,7 +32,7 @@ async function createCardholder({ email, firstName, lastName, phone }) {
   return { customerId: customer.id, cardholderId: cardholder.id };
 }
 
-async function createCard({ cardholderId, type, spendingLimit, spendingLimitInterval }) {
+async function createCard({ cardholderId, type, spendingLimit, spendingLimitInterval, shipping }) {
   const cardParams = {
     cardholder: cardholderId,
     currency: 'usd',
@@ -48,6 +48,21 @@ async function createCard({ cardholderId, type, spendingLimit, spendingLimitInte
           interval: spendingLimitInterval,
         },
       ],
+    };
+  }
+
+  if (type === 'physical' && shipping) {
+    cardParams.shipping = {
+      name: shipping.name,
+      address: {
+        line1: shipping.line1,
+        line2: shipping.line2 || undefined,
+        city: shipping.city,
+        state: shipping.state,
+        postal_code: shipping.postalCode,
+        country: shipping.country || 'US',
+      },
+      service: 'standard',
     };
   }
 

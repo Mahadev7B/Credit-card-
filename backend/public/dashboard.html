@@ -659,6 +659,9 @@ main {
     </button>
   </nav>
   <div class="sidebar-bottom">
+    <div id="admin-link-wrap" style="display:none;margin-bottom:8px">
+      <a href="admin.html" style="display:block;padding:10px 20px;color:rgba(255,255,255,0.5);font-size:13px;font-weight:600;text-decoration:none;border-radius:8px;transition:background .2s" onmouseover="this.style.background='rgba(255,255,255,0.07)'" onmouseout="this.style.background=''">⚙️ Admin Panel</a>
+    </div>
     <button class="btn-signout" id="signout-btn">Sign out</button>
   </div>
 </aside>
@@ -879,6 +882,44 @@ main {
   </div>
 </div>
 
+<!-- Physical Card Modal -->
+<div class="modal-overlay" id="physical-card-modal">
+  <div class="modal" style="max-width:480px">
+    <h2>Request a Physical Card</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:18px">Stripe will mail your Visa card to this address. Arrives in 7–10 business days.</p>
+    <div class="form-group">
+      <label>Full Name (as it will appear on card)</label>
+      <input type="text" id="phys-name" placeholder="Jane Smith" maxlength="30" />
+    </div>
+    <div class="form-group">
+      <label>Street Address</label>
+      <input type="text" id="phys-line1" placeholder="123 Main St" maxlength="100" />
+    </div>
+    <div class="form-group">
+      <label>Apt / Suite (optional)</label>
+      <input type="text" id="phys-line2" placeholder="Apt 4B" maxlength="50" />
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 80px 100px;gap:10px" class="form-group">
+      <div>
+        <label>City</label>
+        <input type="text" id="phys-city" placeholder="San Francisco" maxlength="50" />
+      </div>
+      <div>
+        <label>State</label>
+        <input type="text" id="phys-state" placeholder="CA" maxlength="2" style="text-transform:uppercase" />
+      </div>
+      <div>
+        <label>ZIP Code</label>
+        <input type="text" id="phys-zip" placeholder="94105" maxlength="10" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closePhysicalModal()">Cancel</button>
+      <button class="btn-primary" id="confirm-physical-card" style="flex:1" onclick="requestPhysicalCard()">Request Card</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -1010,6 +1051,9 @@ async function init() {
     document.getElementById('sidebar-avatar').textContent = initials.toUpperCase() || 'U';
     document.getElementById('sidebar-name').textContent = currentUser.firstName + ' ' + currentUser.lastName;
     document.getElementById('sidebar-email').textContent = currentUser.email;
+    if (currentUser.role === 'admin') {
+      document.getElementById('admin-link-wrap').style.display = 'block';
+    }
 
     const dbData = await dbRes.json();
     allDbCards = dbData.cards || [];
@@ -1258,6 +1302,15 @@ async function renderCards() {
     }).join('');
   }
 
+  // Show "Get Physical Card" if user has a virtual SmartCard but no physical one
+  const hasVirtual = allCards.some(c => c.type === 'virtual' && c.status !== 'canceled');
+  const hasPhysical = allCards.some(c => c.type === 'physical' && c.status !== 'canceled');
+  if (hasVirtual && !hasPhysical) {
+    html += `<button class="btn-add-card" onclick="openPhysicalModal()" style="border-color:#1565C0;color:#1565C0">
+      <span class="plus" style="font-size:20px">📬</span> Get Physical Card
+    </button>`;
+  }
+
   html += `<button class="btn-add-card" onclick="openAddCard()"><span class="plus">+</span> Add Card</button>`;
   grid.innerHTML = html;
 }
@@ -1292,6 +1345,57 @@ async function cancelCard(id) {
 
 function closeAddCardModal() {
   document.getElementById('add-card-modal').classList.remove('show');
+}
+
+function openPhysicalModal() {
+  // Pre-fill name from current user
+  if (currentUser) {
+    document.getElementById('phys-name').value = (currentUser.firstName + ' ' + currentUser.lastName).trim();
+  }
+  document.getElementById('physical-card-modal').classList.add('show');
+}
+function closePhysicalModal() {
+  document.getElementById('physical-card-modal').classList.remove('show');
+}
+
+async function requestPhysicalCard() {
+  const name = document.getElementById('phys-name').value.trim();
+  const line1 = document.getElementById('phys-line1').value.trim();
+  const line2 = document.getElementById('phys-line2').value.trim();
+  const city = document.getElementById('phys-city').value.trim();
+  const state = document.getElementById('phys-state').value.trim().toUpperCase();
+  const postalCode = document.getElementById('phys-zip').value.trim();
+
+  if (!name || !line1 || !city || !state || !postalCode) {
+    showToast('Please fill in all required fields', 'error');
+    return;
+  }
+  if (state.length !== 2) { showToast('State must be 2 letters (e.g. CA)', 'error'); return; }
+  if (!/^\d{5}(-\d{4})?$/.test(postalCode)) { showToast('Enter a valid ZIP code', 'error'); return; }
+
+  const btn = document.getElementById('confirm-physical-card');
+  btn.disabled = true; btn.textContent = 'Requesting…';
+  try {
+    const res = await apiFetch('/cards', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'physical',
+        nickname: 'Physical SmartCard',
+        shipping: { name, line1, line2: line2 || null, city, state, postalCode, country: 'US' },
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      allCards.push(data.card);
+      closePhysicalModal();
+      renderCards();
+      showToast('Physical card requested — arrives in 7–10 days', 'success');
+    } else {
+      const err = await res.json();
+      showToast(err.error || 'Failed to request card', 'error');
+    }
+  } catch { showToast('Network error', 'error'); }
+  btn.disabled = false; btn.textContent = 'Request Card';
 }
 
 function openAddCard() {
@@ -1368,16 +1472,16 @@ async function removeLinkedCard(cardId) {
 
 
 // ── Transactions ──
-function renderTxList(container, txs, compact = false) {
-  if (!txs.length) {
+function renderTxList(container, txs, compact = false, append = false) {
+  if (!txs.length && !append) {
     container.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>No transactions yet</p></div>';
     return;
   }
-  container.innerHTML = txs.map(tx => {
+  if (!txs.length) return;
+  const html = txs.map(tx => {
     const icon = categoryIcons[tx.rewardCategory] || '💳';
-    const isOurCard = true; // all transactions through our Stripe card are confirmed
     const cashbackHtml = tx.cashbackAmount > 0
-      ? `<div class="tx-cashback ${isOurCard ? '' : 'estimated'}">+${fmtDollars(tx.cashbackAmount)} cashback</div>`
+      ? `<div class="tx-cashback">+${fmtDollars(tx.cashbackAmount)} cashback</div>`
       : '';
     return `
       <div class="tx-row">
@@ -1394,27 +1498,53 @@ function renderTxList(container, txs, compact = false) {
       </div>
     `;
   }).join('');
+  if (append) {
+    container.insertAdjacentHTML('beforeend', html);
+  } else {
+    container.innerHTML = html;
+  }
 }
 
-async function loadAllTransactions() {
+let txPage = 1;
+let txAllLoaded = false;
+
+async function loadAllTransactions(append = false) {
   const container = document.getElementById('tx-list-full');
   if (!allCards.length) {
     try { const res = await apiFetch('/cards'); allCards = (await res.json()).cards || []; } catch {}
   }
   if (!allCards.length) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-icon">💳</div><p>Add a card to see transactions</p></div>';
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">💳</div><p>Link a card to see transactions</p></div>';
     return;
   }
-  container.innerHTML = '<div class="loading-wrap"><span class="spinner"></span> Loading…</div>';
+  if (!append) {
+    txPage = 1; txAllLoaded = false;
+    container.innerHTML = '<div class="loading-wrap"><span class="spinner"></span> Loading…</div>';
+  }
   try {
     const all = [];
     for (const card of allCards) {
-      const res = await apiFetch('/cards/' + card._id + '/transactions?limit=50');
+      const res = await apiFetch(`/cards/${card._id}/transactions?limit=20&page=${txPage}`);
       const data = await res.json();
       all.push(...(data.transactions || []));
+      if (txPage >= (data.pages || 1)) txAllLoaded = true;
     }
     all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    if (append) {
+      const loadMoreBtn = document.getElementById('tx-load-more');
+      if (loadMoreBtn) loadMoreBtn.remove();
+    }
+    if (!append) container.innerHTML = '';
     renderTxList(container, all);
+    if (!txAllLoaded) {
+      const btn = document.createElement('button');
+      btn.id = 'tx-load-more';
+      btn.className = 'btn-primary';
+      btn.style.cssText = 'margin:16px auto;display:block;padding:10px 28px';
+      btn.textContent = 'Load More';
+      btn.onclick = () => { txPage++; loadAllTransactions(true); };
+      container.appendChild(btn);
+    }
   } catch { showToast('Failed to load transactions', 'error'); }
 }
 
@@ -1568,21 +1698,49 @@ function renderRecommendResults(data) {
 }
 
 // ── Rewards ──
-async function loadRewards() {
+let rewardsPage = 1;
+let rewardsAllLoaded = false;
+
+async function loadRewards(append = false) {
   try {
+    if (!append) {
+      rewardsPage = 1; rewardsAllLoaded = false;
+    }
     const [balRes, histRes] = await Promise.all([
-      apiFetch('/rewards/balance'),
-      apiFetch('/rewards/history'),
+      append ? Promise.resolve({ ok: false }) : apiFetch('/rewards/balance'),
+      apiFetch(`/rewards/history?page=${rewardsPage}&limit=20`),
     ]);
-    const bal = await balRes.json();
+
+    if (!append && balRes.ok) {
+      const bal = await balRes.json();
+      document.getElementById('rewards-amount').textContent = fmtDollars(bal.balance || 0);
+      document.getElementById('rewards-total').textContent = fmtDollars(bal.totalEarned || 0) + ' earned all time';
+    }
+
     const hist = await histRes.json();
-
-    document.getElementById('rewards-amount').textContent = fmtDollars(bal.balance || 0);
-    document.getElementById('rewards-total').textContent = fmtDollars(bal.totalEarned || 0) + ' earned all time';
-
     const transactions = hist.transactions || [];
-    renderEarningsTimelineChart(transactions);
-    renderTxList(document.getElementById('rewards-history-list'), transactions);
+    if (rewardsPage >= (hist.pages || 1)) rewardsAllLoaded = true;
+
+    if (!append) {
+      renderEarningsTimelineChart(transactions);
+    }
+
+    const listEl = document.getElementById('rewards-history-list');
+    if (append) {
+      const btn = document.getElementById('rewards-load-more');
+      if (btn) btn.remove();
+    }
+    renderTxList(listEl, transactions, false, append);
+
+    if (!rewardsAllLoaded) {
+      const btn = document.createElement('button');
+      btn.id = 'rewards-load-more';
+      btn.className = 'btn-primary';
+      btn.style.cssText = 'margin:16px auto;display:block;padding:10px 28px';
+      btn.textContent = 'Load More';
+      btn.onclick = () => { rewardsPage++; loadRewards(true); };
+      listEl.appendChild(btn);
+    }
   } catch { showToast('Failed to load rewards', 'error'); }
 }
 
@@ -1797,6 +1955,9 @@ window.removeLinkedCard = removeLinkedCard;
 window.freezeCard = freezeCard;
 window.cancelCard = cancelCard;
 window.toggleCard = toggleCard;
+window.openPhysicalModal = openPhysicalModal;
+window.closePhysicalModal = closePhysicalModal;
+window.requestPhysicalCard = requestPhysicalCard;
 
 // ── Start ──
 init();
