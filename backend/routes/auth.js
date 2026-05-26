@@ -37,6 +37,11 @@ const loginSchema = Joi.object({
   password: Joi.string().max(128).required(),
 });
 
+function isAdminEmail(email) {
+  const list = (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  return list.includes(email.toLowerCase());
+}
+
 function signToken(userId) {
   return jwt.sign({ sub: userId }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
@@ -69,6 +74,7 @@ router.post('/register', authLimiter, async (req, res, next) => {
 
     user.stripeCustomerId = customerId;
     user.stripeCardholderId = cardholderId;
+    if (isAdminEmail(user.email)) user.role = 'admin';
 
     await user.save();
     logger.info({ msg: 'User registered', userId: user._id });
@@ -91,6 +97,12 @@ router.post('/login', authLimiter, async (req, res, next) => {
     }
 
     if (!user.isActive) return res.status(403).json({ error: 'Account suspended' });
+
+    // Auto-promote whitelisted emails to admin
+    if (isAdminEmail(user.email) && user.role !== 'admin') {
+      user.role = 'admin';
+      logger.info({ msg: 'Promoted to admin via ADMIN_EMAILS', userId: user._id });
+    }
 
     user.lastLoginAt = new Date();
     await user.save();
