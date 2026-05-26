@@ -54,14 +54,20 @@ router.get('/download', async (req, res, next) => {
 
 router.get('/summary', async (req, res, next) => {
   try {
-    const { error, value } = querySchema.omit(['format']).validate(req.query);
-    if (error) return res.status(400).json({ error: error.details[0].message });
+    // Default to current month if no date range provided
+    const now = new Date();
+    const defaultStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const defaultEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+    const startDate = req.query.startDate ? new Date(req.query.startDate) : defaultStart;
+    const endDate = req.query.endDate ? new Date(req.query.endDate) : defaultEnd;
+    const cardId = req.query.cardId;
 
     const summary = await statementGenerator.getSummary({
       userId: req.user._id,
-      startDate: value.startDate,
-      endDate: value.endDate,
-      cardId: value.cardId,
+      startDate,
+      endDate,
+      cardId,
     });
 
     res.json({ summary });

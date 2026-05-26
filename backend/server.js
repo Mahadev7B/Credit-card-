@@ -20,6 +20,10 @@ const { refreshCardRates } = require('./services/claudeRewardsUpdater');
 
 const app = express();
 
+// Trust Render's reverse proxy so X-Forwarded-For is honored
+// for rate limiting and req.ip resolution
+app.set('trust proxy', 1);
+
 // Webhook route must use raw body before JSON parsing
 app.use('/webhooks/stripe', express.raw({ type: 'application/json' }), webhookRoutes);
 
