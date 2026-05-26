@@ -17,7 +17,13 @@ const userSchema = new mongoose.Schema(
     totalCashback: { type: Number, default: 0 },
     lastLoginAt: { type: Date },
     kycStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
-    linkedCards: [{ cardId: { type: String, required: true }, addedAt: { type: Date, default: Date.now } }],
+    linkedCards: [{
+      cardId: { type: String, required: true },
+      nickname: { type: String, required: true, trim: true, maxlength: 50 },
+      last4: { type: String, match: /^\d{4}$/ },
+      color: { type: String, match: /^#[0-9A-Fa-f]{6}$/ },
+      addedAt: { type: Date, default: Date.now },
+    }],
   },
   { timestamps: true }
 );

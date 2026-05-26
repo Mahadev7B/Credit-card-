@@ -578,6 +578,9 @@ main {
 .linked-card-icon { width: 40px; height: 28px; border-radius: 6px; background: linear-gradient(135deg,#667eea,#764ba2); display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff; flex-shrink:0; }
 .btn-remove { font-size: 12px; color: var(--red); background: none; border: 1px solid var(--red); border-radius: 6px; padding: 4px 10px; cursor: pointer; white-space: nowrap; }
 .btn-remove:hover { background: #fdecea; }
+.swatch { width: 36px; height: 36px; border-radius: 8px; border: 2px solid transparent; cursor: pointer; padding: 0; transition: transform .15s, border-color .15s; }
+.swatch:hover { transform: scale(1.08); }
+.swatch.selected { border-color: var(--dark); transform: scale(1.08); }
 
 /* ── Spinner / Empty ── */
 .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #ddd; border-top-color: var(--primary-dark); border-radius: 50%; animation: spin 0.7s linear infinite; }
@@ -871,13 +874,55 @@ main {
 <!-- Add Card Modal -->
 <div class="modal-overlay" id="add-card-modal">
   <div class="modal" style="max-width:480px">
-    <h2>Link a Card</h2>
-    <p style="color:var(--text2);font-size:13px;margin-bottom:12px">Select a card you own — we'll use it to find you the best rewards at every purchase.</p>
-    <input type="text" id="card-search" placeholder="Search by card name or bank…" oninput="filterCardList(this.value)"
-      style="width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;outline:none;margin-bottom:10px"/>
-    <div id="card-list" style="max-height:320px;overflow-y:auto;border:1.5px solid #eee;border-radius:10px;background:#fff"></div>
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeAddCardModal()" style="width:100%">Cancel</button>
+    <!-- Step 1: pick product -->
+    <div id="add-step-pick">
+      <h2>Add Your Card</h2>
+      <p style="color:var(--text2);font-size:13px;margin-bottom:12px">First, find your card — what bank issued it?</p>
+      <input type="text" id="card-search" placeholder="Search by card name or bank…" oninput="filterCardList(this.value)"
+        style="width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;outline:none;margin-bottom:10px"/>
+      <div id="card-list" style="max-height:320px;overflow-y:auto;border:1.5px solid #eee;border-radius:10px;background:#fff"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeAddCardModal()" style="width:100%">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Step 2: personalize -->
+    <div id="add-step-details" style="display:none">
+      <h2>Make It Yours</h2>
+      <div id="picked-product-banner" style="background:#f9f9f9;border-radius:10px;padding:12px 14px;margin-bottom:18px;display:flex;align-items:center;gap:10px">
+        <div style="font-size:24px">💳</div>
+        <div>
+          <div style="font-weight:700;font-size:14px" id="picked-product-name"></div>
+          <div style="font-size:12px;color:var(--text2)" id="picked-product-issuer"></div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Nickname <span style="color:var(--red)">*</span></label>
+        <input type="text" id="link-nickname" placeholder="e.g. Travel card, Wife's Chase" maxlength="50" />
+      </div>
+      <div class="form-group">
+        <label>Last 4 digits <span style="color:var(--text2);font-weight:400">(optional)</span></label>
+        <input type="text" id="link-last4" placeholder="1234" maxlength="4" inputmode="numeric" pattern="\d{4}" />
+      </div>
+      <div class="form-group">
+        <label>Card color <span style="color:var(--text2);font-weight:400">(optional)</span></label>
+        <div id="color-swatches" style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="swatch" data-color="#1a3a5e" style="background:#1a3a5e"></button>
+          <button type="button" class="swatch" data-color="#0d47a1" style="background:#0d47a1"></button>
+          <button type="button" class="swatch" data-color="#1b5e20" style="background:#1b5e20"></button>
+          <button type="button" class="swatch" data-color="#4a148c" style="background:#4a148c"></button>
+          <button type="button" class="swatch" data-color="#b71c1c" style="background:#b71c1c"></button>
+          <button type="button" class="swatch" data-color="#e65100" style="background:#e65100"></button>
+          <button type="button" class="swatch" data-color="#37474f" style="background:#37474f"></button>
+          <button type="button" class="swatch" data-color="#212121" style="background:#212121"></button>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="backToCardPick()">Back</button>
+        <button class="btn-primary" id="confirm-link-card" style="flex:1" onclick="submitLinkCard()">Add Card</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1276,9 +1321,10 @@ async function renderCards() {
     html += `<div style="grid-column:1/-1;font-size:12px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-top:8px;margin-bottom:4px">YOUR EXISTING CARDS</div>`;
     html += allLinkedCards.map(lc => {
       const dbCard = allDbCards.find(c => c.id === lc.cardId);
-      const name = dbCard ? dbCard.name : lc.cardId;
+      const productName = dbCard ? dbCard.name : lc.cardId;
       const issuer = dbCard ? dbCard.issuer : '';
       const initials = issuer.substring(0, 3).toUpperCase();
+      const tileColor = lc.color || '#37474f';
       // Top 3 rates for this card
       let topRates = '';
       if (dbCard && dbCard.rates) {
@@ -1288,15 +1334,18 @@ async function renderCards() {
           .slice(0, 3);
         topRates = sorted.map(([cat, r]) => `<span style="background:#f0f7e0;color:var(--primary-dark);border-radius:4px;padding:1px 6px;font-size:11px;font-weight:700;margin-right:4px">${(r*100).toFixed(0)}% ${cat}</span>`).join('');
       }
+      const last4Html = lc.last4
+        ? `<span style="font-family:monospace;font-size:12px;color:var(--text2);margin-left:6px">••••${lc.last4}</span>`
+        : '';
       return `
         <div class="linked-card-row" style="grid-column:1/-1">
-          <div class="linked-card-icon">${initials}</div>
+          <div class="linked-card-icon" style="background:${tileColor};width:48px;height:32px">${initials}</div>
           <div style="flex:1">
-            <div style="font-size:14px;font-weight:700">${name}</div>
-            <div style="font-size:12px;color:var(--text2);margin:2px 0">${issuer} · <span style="color:var(--orange);font-weight:600">est.</span> rates</div>
+            <div style="font-size:14px;font-weight:700">${lc.nickname || productName}${last4Html}</div>
+            <div style="font-size:12px;color:var(--text2);margin:2px 0">${productName} · ${issuer} · <span style="color:var(--orange);font-weight:600">est.</span> rates</div>
             <div style="margin-top:4px">${topRates}</div>
           </div>
-          <button class="btn-remove" onclick="removeLinkedCard('${lc.cardId}')">Remove</button>
+          <button class="btn-remove" onclick="removeLinkedCard('${lc._id}')">Remove</button>
         </div>
       `;
     }).join('');
@@ -1345,6 +1394,77 @@ async function cancelCard(id) {
 
 function closeAddCardModal() {
   document.getElementById('add-card-modal').classList.remove('show');
+}
+
+let _pickedProduct = null;
+let _pickedColor = null;
+
+function showAddStep(step) {
+  document.getElementById('add-step-pick').style.display = step === 'pick' ? '' : 'none';
+  document.getElementById('add-step-details').style.display = step === 'details' ? '' : 'none';
+}
+
+function backToCardPick() {
+  _pickedProduct = null;
+  showAddStep('pick');
+}
+
+function selectCardProduct(cardId) {
+  const product = allDbCards.find(c => c.id === cardId);
+  if (!product) return;
+  _pickedProduct = product;
+  _pickedColor = null;
+
+  document.getElementById('picked-product-name').textContent = product.name;
+  document.getElementById('picked-product-issuer').textContent =
+    `${product.issuer} · ${product.annualFee === 0 ? 'No annual fee' : '$' + product.annualFee + '/yr'}`;
+  document.getElementById('link-nickname').value = '';
+  document.getElementById('link-last4').value = '';
+  document.querySelectorAll('#color-swatches .swatch').forEach(s => s.classList.remove('selected'));
+  showAddStep('details');
+  setTimeout(() => document.getElementById('link-nickname').focus(), 50);
+}
+
+async function submitLinkCard() {
+  if (!_pickedProduct) return;
+  const nickname = document.getElementById('link-nickname').value.trim();
+  const last4 = document.getElementById('link-last4').value.trim();
+  if (!nickname) { showToast('Nickname is required', 'error'); return; }
+  if (last4 && !/^\d{4}$/.test(last4)) { showToast('Last 4 must be 4 digits', 'error'); return; }
+
+  const btn = document.getElementById('confirm-link-card');
+  btn.disabled = true; btn.textContent = 'Adding…';
+  try {
+    const res = await apiFetch('/users/linked-cards', {
+      method: 'POST',
+      body: JSON.stringify({
+        cardId: _pickedProduct.id,
+        nickname,
+        last4: last4 || null,
+        color: _pickedColor || null,
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const wasFirstCard = allLinkedCards.length === 0;
+      allLinkedCards = data.linkedCards;
+      selectedCardIds.add(_pickedProduct.id);
+      // Reload SmartCards in case one was auto-issued
+      try {
+        const cr = await apiFetch('/cards');
+        if (cr.ok) allCards = (await cr.json()).cards || [];
+      } catch {}
+      closeAddCardModal();
+      renderCards();
+      showToast(wasFirstCard && allCards.length > 0
+        ? 'Card added — SmartCard issued ✓'
+        : 'Card added ✓', 'success');
+    } else {
+      const err = await res.json();
+      showToast(err.error || 'Failed to add card', 'error');
+    }
+  } catch { showToast('Network error', 'error'); }
+  btn.disabled = false; btn.textContent = 'Add Card';
 }
 
 function openPhysicalModal() {
@@ -1399,17 +1519,17 @@ async function requestPhysicalCard() {
 }
 
 function openAddCard() {
+  _pickedProduct = null;
   document.getElementById('card-search').value = '';
   renderCardList('');
+  showAddStep('pick');
   document.getElementById('add-card-modal').classList.add('show');
 }
 
 function renderCardList(query) {
   const el = document.getElementById('card-list');
-  const linkedIds = new Set(allLinkedCards.map(lc => lc.cardId));
   const filtered = allDbCards.filter(c =>
     !c.isOwnCard &&
-    !linkedIds.has(c.id) &&
     (!query || c.name.toLowerCase().includes(query.toLowerCase()) || c.issuer.toLowerCase().includes(query.toLowerCase()))
   );
   if (!filtered.length) {
@@ -1417,7 +1537,7 @@ function renderCardList(query) {
     return;
   }
   el.innerHTML = filtered.map(c => `
-    <div class="card-list-item" onclick="addLinkedCard('${c.id}')">
+    <div class="card-list-item" onclick="selectCardProduct('${c.id}')">
       <div style="flex:1">
         <div class="cli-name">${c.name}</div>
         <div class="cli-meta">${c.issuer} · ${c.annualFee === 0 ? 'No annual fee' : '$' + c.annualFee + '/yr'}</div>
@@ -1429,41 +1549,15 @@ function renderCardList(query) {
 
 function filterCardList(q) { renderCardList(q); }
 
-async function addLinkedCard(cardId) {
+async function removeLinkedCard(linkedId) {
   try {
-    const res = await apiFetch('/users/linked-cards', {
-      method: 'POST',
-      body: JSON.stringify({ cardId }),
-    });
+    const res = await apiFetch('/users/linked-cards/' + linkedId, { method: 'DELETE' });
     if (res.ok) {
       const data = await res.json();
       allLinkedCards = data.linkedCards;
-      selectedCardIds.add(cardId);
-      // Reload SmartCards in case one was auto-issued
-      try {
-        const cr = await apiFetch('/cards');
-        if (cr.ok) allCards = (await cr.json()).cards || [];
-      } catch {}
-      closeAddCardModal();
-      renderCards();
-      const msg = allCards.length > 0 && data.linkedCards.length === 1
-        ? 'Card linked — SmartCard issued ✓'
-        : 'Card linked ✓';
-      showToast(msg, 'success');
-    } else {
-      const err = await res.json();
-      showToast(err.error || 'Failed to link card', 'error');
-    }
-  } catch { showToast('Network error', 'error'); }
-}
-
-async function removeLinkedCard(cardId) {
-  try {
-    const res = await apiFetch('/users/linked-cards/' + cardId, { method: 'DELETE' });
-    if (res.ok) {
-      const data = await res.json();
-      allLinkedCards = data.linkedCards;
-      selectedCardIds.delete(cardId);
+      // Rebuild selectedCardIds from remaining linked cards (dedup by product)
+      selectedCardIds = new Set(allDbCards.filter(c => c.isOwnCard).map(c => c.id));
+      allLinkedCards.forEach(lc => selectedCardIds.add(lc.cardId));
       renderCards();
       showToast('Card removed', 'success');
     }
@@ -1946,11 +2040,22 @@ document.getElementById('signout-btn').addEventListener('click', () => {
   location.href = 'login.html';
 });
 
+// ── Color swatch picker wiring ──
+document.querySelectorAll('#color-swatches .swatch').forEach(sw => {
+  sw.addEventListener('click', () => {
+    document.querySelectorAll('#color-swatches .swatch').forEach(s => s.classList.remove('selected'));
+    sw.classList.add('selected');
+    _pickedColor = sw.dataset.color;
+  });
+});
+
 // ── Expose handlers used by inline onclick/oninput in the HTML ──
 window.openAddCard = openAddCard;
 window.closeAddCardModal = closeAddCardModal;
 window.filterCardList = filterCardList;
-window.addLinkedCard = addLinkedCard;
+window.selectCardProduct = selectCardProduct;
+window.backToCardPick = backToCardPick;
+window.submitLinkCard = submitLinkCard;
 window.removeLinkedCard = removeLinkedCard;
 window.freezeCard = freezeCard;
 window.cancelCard = cancelCard;
