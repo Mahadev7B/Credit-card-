@@ -1862,6 +1862,17 @@ document.getElementById('signout-btn').addEventListener('click', () => {
   location.href = 'login.html';
 });
 
+// ── Expose handlers used by inline onclick/oninput in the HTML ──
+window.openAddCard = openAddCard;
+window.closeAddCardModal = closeAddCardModal;
+window.showCardModalMode = showCardModalMode;
+window.filterCardList = filterCardList;
+window.addLinkedCard = addLinkedCard;
+window.removeLinkedCard = removeLinkedCard;
+window.freezeCard = freezeCard;
+window.cancelCard = cancelCard;
+window.toggleCard = toggleCard;
+
 // ── Start ──
 init();
 
