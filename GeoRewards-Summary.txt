@@ -1,0 +1,44 @@
+GeoRewards — What It Does
+=========================
+
+THE PROBLEM
+Most people have 3-5 credit cards. Each earns different rewards at different merchants. Nobody remembers which card to use where. Result — hundreds of dollars in rewards lost every year without realizing it.
+
+
+HOW IT WORKS
+
+Connect Your Cards
+Users connect their existing cards — Chase, Amex, Citi, any card — through their bank's official app via secure OAuth powered by Plaid. No card numbers entered. No credentials shared with us. Bank handles the login entirely.
+
+See What You're Losing
+We analyze 12 months of real transaction history pulled via Plaid and show exactly how much money was left on the table. Not estimates — actual numbers from actual spending.
+
+Real Time Location Alerts
+Using iPhone GPS and geofencing, GeoRewards detects when you're near a merchant where one of your cards earns better rewards or has an expiring credit. A notification fires before you tap your card telling you exactly which card to use and why.
+
+Benefits Tracker
+Every annual credit across all your cards — Amex dining credit, Chase travel credit, Saks credit — tracked automatically using Plaid transaction data. Expiry dates, remaining balances, all in one place.
+
+Consolidated Monthly Statement
+One PDF every month covering all connected cards together. Total spent, total rewards earned, missed opportunities, benefits used. Generated automatically from Plaid data.
+
+Card Recommendations
+Based on real spending patterns, GeoRewards tells you which cards to add or drop to maximize what you earn. Personalized to how you actually spend, not generic advice.
+
+
+TECHNOLOGY
+- Plaid — secure bank connection and transaction data
+- OAuth — users authenticate on their bank's own app, never inside GeoRewards
+- iPhone GPS + Core Location — background geofencing for real time merchant detection
+- OpenStreetMap — merchant location database, free and global
+- MongoDB geospatial — instant location matching across 500,000+ merchant locations
+- Claude API — statement parsing and personalized recommendations
+
+
+BUSINESS MODEL
+- $9.99/month subscription
+- Card affiliate commissions when users apply for recommended cards
+
+
+WHAT MAKES IT DIFFERENT
+Every other app tells you which card to use generically. GeoRewards uses your real spending data and your real location to tell you the right card at the right moment, automatically.
