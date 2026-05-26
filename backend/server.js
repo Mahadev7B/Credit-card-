@@ -14,6 +14,7 @@ const webhookRoutes = require('./routes/webhooks');
 const statementRoutes = require('./routes/statements');
 const rewardsRoutes = require('./routes/rewards');
 const recommendRoutes = require('./routes/recommend');
+const usersRoutes = require('./routes/users');
 const { runNightlyHealthCheck } = require('./jobs/nightlyHealthCheck');
 const { refreshCardRates } = require('./services/claudeRewardsUpdater');
 
@@ -69,6 +70,7 @@ app.use('/api/cards', cardRoutes);
 app.use('/api/statements', statementRoutes);
 app.use('/api/rewards', rewardsRoutes);
 app.use('/api/recommend', recommendRoutes);
+app.use('/api/users', usersRoutes);
 
 app.get('/health', (req, res) => res.json({
   status: 'ok',

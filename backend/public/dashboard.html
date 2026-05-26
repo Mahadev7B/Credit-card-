@@ -555,6 +555,29 @@ main {
   cursor: pointer;
 }
 .btn-cancel:hover { background: #f5f5f5; }
+.btn-mode {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 18px 16px; border: 2px solid #eee; border-radius: 14px;
+  background: #fafafa; cursor: pointer; transition: border-color 0.2s, background 0.2s;
+  width: 100%; text-align: center;
+}
+.btn-mode:hover { border-color: var(--primary); background: var(--primary-light); }
+.card-list-item {
+  display: flex; align-items: center; gap: 12px; padding: 11px 14px;
+  cursor: pointer; transition: background 0.15s; border-bottom: 1px solid #f2f2f2;
+}
+.card-list-item:last-child { border-bottom: none; }
+.card-list-item:hover { background: #f8fdf0; }
+.card-list-item .cli-name { font-size: 14px; font-weight: 600; }
+.card-list-item .cli-meta { font-size: 12px; color: var(--text2); margin-top: 1px; }
+.linked-card-row {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--white); border: 1.5px solid #eee; border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.linked-card-icon { width: 40px; height: 28px; border-radius: 6px; background: linear-gradient(135deg,#667eea,#764ba2); display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff; flex-shrink:0; }
+.btn-remove { font-size: 12px; color: var(--red); background: none; border: 1px solid var(--red); border-radius: 6px; padding: 4px 10px; cursor: pointer; white-space: nowrap; }
+.btn-remove:hover { background: #fdecea; }
 
 /* ── Spinner / Empty ── */
 .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #ddd; border-top-color: var(--primary-dark); border-radius: 50%; animation: spin 0.7s linear infinite; }
@@ -844,26 +867,58 @@ main {
 
 <!-- Add Card Modal -->
 <div class="modal-overlay" id="add-card-modal">
-  <div class="modal">
-    <h2>Add New Card</h2>
-    <div class="form-group">
-      <label>Card Type</label>
-      <select id="new-card-type">
-        <option value="virtual">Virtual (instant)</option>
-        <option value="physical">Physical (mailed)</option>
-      </select>
+  <div class="modal" style="max-width:480px">
+    <h2 id="modal-card-title">Add a Card</h2>
+
+    <!-- Step 0: choose mode -->
+    <div id="modal-choose">
+      <p style="color:var(--text2);font-size:13px;margin-bottom:18px">What would you like to do?</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="btn-mode" onclick="showCardModalMode('existing')">
+          <div style="font-size:26px;margin-bottom:4px">💳</div>
+          <div style="font-weight:700;font-size:15px">Link an existing card</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">Chase, Amex, Citi &amp; more — for smarter recommendations</div>
+        </button>
+        <button class="btn-mode" onclick="showCardModalMode('smartcard')">
+          <div style="font-size:26px;margin-bottom:4px">✨</div>
+          <div style="font-weight:700;font-size:15px">Get a SmartCard</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">Free Visa card — confirmed cashback on every purchase</div>
+        </button>
+      </div>
+      <button class="btn-cancel" style="margin-top:16px;width:100%" onclick="closeAddCardModal()">Cancel</button>
     </div>
-    <div class="form-group">
-      <label>Nickname (optional)</label>
-      <input type="text" id="new-card-nick" placeholder="e.g. Daily Driver" maxlength="30" />
+
+    <!-- Step 1a: link existing card -->
+    <div id="modal-existing" style="display:none">
+      <input type="text" id="card-search" placeholder="Search cards…" oninput="filterCardList(this.value)"
+        style="width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;outline:none;margin-bottom:10px"/>
+      <div id="card-list" style="max-height:300px;overflow-y:auto;border:1.5px solid #eee;border-radius:10px;background:#fff"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="showCardModalMode(null)">Back</button>
+      </div>
     </div>
-    <div class="form-group">
-      <label>Monthly Spending Limit (optional)</label>
-      <input type="number" id="new-card-limit" placeholder="e.g. 2000" min="1" />
-    </div>
-    <div class="modal-actions">
-      <button class="btn-cancel" id="cancel-add-card">Cancel</button>
-      <button class="btn-primary" id="confirm-add-card" style="flex:1">Create Card</button>
+
+    <!-- Step 1b: create SmartCard -->
+    <div id="modal-smartcard" style="display:none">
+      <div class="form-group">
+        <label>Card Type</label>
+        <select id="new-card-type">
+          <option value="virtual">Virtual (instant)</option>
+          <option value="physical">Physical (mailed)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Nickname (optional)</label>
+        <input type="text" id="new-card-nick" placeholder="e.g. Daily Driver" maxlength="30" />
+      </div>
+      <div class="form-group">
+        <label>Monthly Spending Limit (optional)</label>
+        <input type="number" id="new-card-limit" placeholder="e.g. 2000" min="1" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="showCardModalMode(null)">Back</button>
+        <button class="btn-primary" id="confirm-add-card" style="flex:1">Create Card</button>
+      </div>
     </div>
   </div>
 </div>
@@ -888,7 +943,9 @@ if (!token) { location.href = 'login.html'; }
 
 let currentUser = null;
 let allCards = [];
+let allLinkedCards = [];
 let allTransactions = [];
+let allDbCards = [];
 
 // ── Chart instance registry (to destroy before recreating) ──
 const chartInstances = {};
@@ -987,13 +1044,24 @@ async function init() {
   });
 
   try {
-    const res = await apiFetch('/auth/me');
-    const data = await res.json();
-    currentUser = data.user;
+    const [meRes, dbRes] = await Promise.all([
+      apiFetch('/auth/me'),
+      apiFetch('/recommend/cards'),
+    ]);
+    const meData = await meRes.json();
+    currentUser = meData.user;
     const initials = ((currentUser.firstName || '')[0] || '') + ((currentUser.lastName || '')[0] || '');
     document.getElementById('sidebar-avatar').textContent = initials.toUpperCase() || 'U';
     document.getElementById('sidebar-name').textContent = currentUser.firstName + ' ' + currentUser.lastName;
     document.getElementById('sidebar-email').textContent = currentUser.email;
+
+    const dbData = await dbRes.json();
+    allDbCards = dbData.cards || [];
+    // SmartCard always selected in recommendations
+    allDbCards.filter(c => c.isOwnCard).forEach(c => selectedCardIds.add(c.id));
+    // Apply saved linked cards
+    allLinkedCards = (currentUser.linkedCards || []);
+    allLinkedCards.forEach(lc => selectedCardIds.add(lc.cardId));
   } catch {}
 
   await loadOverview();
@@ -1178,6 +1246,8 @@ async function renderCards() {
 
   const grid = document.getElementById('cards-grid');
   const gradients = ['gradient-blue', 'gradient-gold', 'gradient-dark'];
+
+  // SmartCards (Stripe Issuing)
   let html = allCards.map((card, i) => `
     <div class="card-tile ${gradients[i % gradients.length]}">
       <div style="display:flex;align-items:center;justify-content:space-between">
@@ -1200,6 +1270,37 @@ async function renderCards() {
       <button class="btn-sm danger" onclick="cancelCard('${card._id}')">Cancel</button>
     </div>
   `).join('');
+
+  // Linked existing cards
+  if (allLinkedCards.length > 0) {
+    html += `<div style="grid-column:1/-1;font-size:12px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-top:8px;margin-bottom:4px">YOUR EXISTING CARDS</div>`;
+    html += allLinkedCards.map(lc => {
+      const dbCard = allDbCards.find(c => c.id === lc.cardId);
+      const name = dbCard ? dbCard.name : lc.cardId;
+      const issuer = dbCard ? dbCard.issuer : '';
+      const initials = issuer.substring(0, 3).toUpperCase();
+      // Top 3 rates for this card
+      let topRates = '';
+      if (dbCard && dbCard.rates) {
+        const sorted = Object.entries(dbCard.rates)
+          .filter(([k]) => k !== 'general')
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3);
+        topRates = sorted.map(([cat, r]) => `<span style="background:#f0f7e0;color:var(--primary-dark);border-radius:4px;padding:1px 6px;font-size:11px;font-weight:700;margin-right:4px">${(r*100).toFixed(0)}% ${cat}</span>`).join('');
+      }
+      return `
+        <div class="linked-card-row" style="grid-column:1/-1">
+          <div class="linked-card-icon">${initials}</div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:700">${name}</div>
+            <div style="font-size:12px;color:var(--text2);margin:2px 0">${issuer} · <span style="color:var(--orange);font-weight:600">est.</span> rates</div>
+            <div style="margin-top:4px">${topRates}</div>
+          </div>
+          <button class="btn-remove" onclick="removeLinkedCard('${lc.cardId}')">Remove</button>
+        </div>
+      `;
+    }).join('');
+  }
 
   html += `<button class="btn-add-card" onclick="openAddCard()"><span class="plus">+</span> Add Card</button>`;
   grid.innerHTML = html;
@@ -1233,10 +1334,88 @@ async function cancelCard(id) {
   } catch { showToast('Action failed', 'error'); }
 }
 
-function openAddCard() { document.getElementById('add-card-modal').classList.add('show'); }
-document.getElementById('cancel-add-card').addEventListener('click', () => {
+function closeAddCardModal() {
   document.getElementById('add-card-modal').classList.remove('show');
-});
+  showCardModalMode(null);
+}
+
+function openAddCard() {
+  showCardModalMode(null);
+  document.getElementById('add-card-modal').classList.add('show');
+}
+
+function showCardModalMode(mode) {
+  document.getElementById('modal-choose').style.display = mode === null ? '' : 'none';
+  document.getElementById('modal-existing').style.display = mode === 'existing' ? '' : 'none';
+  document.getElementById('modal-smartcard').style.display = mode === 'smartcard' ? '' : 'none';
+
+  const titles = { null: 'Add a Card', existing: 'Link an Existing Card', smartcard: 'Get a SmartCard' };
+  document.getElementById('modal-card-title').textContent = titles[mode] || 'Add a Card';
+
+  if (mode === 'existing') {
+    document.getElementById('card-search').value = '';
+    renderCardList('');
+  }
+}
+
+function renderCardList(query) {
+  const el = document.getElementById('card-list');
+  const linkedIds = new Set(allLinkedCards.map(lc => lc.cardId));
+  const filtered = allDbCards.filter(c =>
+    !c.isOwnCard &&
+    !linkedIds.has(c.id) &&
+    (!query || c.name.toLowerCase().includes(query.toLowerCase()) || c.issuer.toLowerCase().includes(query.toLowerCase()))
+  );
+  if (!filtered.length) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text2);font-size:13px">No cards found</div>';
+    return;
+  }
+  el.innerHTML = filtered.map(c => `
+    <div class="card-list-item" onclick="addLinkedCard('${c.id}')">
+      <div style="flex:1">
+        <div class="cli-name">${c.name}</div>
+        <div class="cli-meta">${c.issuer} · ${c.annualFee === 0 ? 'No annual fee' : '$' + c.annualFee + '/yr'}</div>
+      </div>
+      <div style="font-size:12px;color:var(--primary-dark);font-weight:700">+ Add</div>
+    </div>
+  `).join('');
+}
+
+function filterCardList(q) { renderCardList(q); }
+
+async function addLinkedCard(cardId) {
+  try {
+    const res = await apiFetch('/users/linked-cards', {
+      method: 'POST',
+      body: JSON.stringify({ cardId }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      allLinkedCards = data.linkedCards;
+      selectedCardIds.add(cardId);
+      closeAddCardModal();
+      renderCards();
+      showToast('Card linked ✓', 'success');
+    } else {
+      const err = await res.json();
+      showToast(err.error || 'Failed to link card', 'error');
+    }
+  } catch { showToast('Network error', 'error'); }
+}
+
+async function removeLinkedCard(cardId) {
+  try {
+    const res = await apiFetch('/users/linked-cards/' + cardId, { method: 'DELETE' });
+    if (res.ok) {
+      const data = await res.json();
+      allLinkedCards = data.linkedCards;
+      selectedCardIds.delete(cardId);
+      renderCards();
+      showToast('Card removed', 'success');
+    }
+  } catch { showToast('Action failed', 'error'); }
+}
+
 document.getElementById('confirm-add-card').addEventListener('click', async () => {
   const type = document.getElementById('new-card-type').value;
   const nickname = document.getElementById('new-card-nick').value.trim() || null;
@@ -1251,9 +1430,9 @@ document.getElementById('confirm-add-card').addEventListener('click', async () =
     if (res.ok) {
       const data = await res.json();
       allCards.push(data.card);
-      document.getElementById('add-card-modal').classList.remove('show');
+      closeAddCardModal();
       renderCards();
-      showToast('Card created ✓', 'success');
+      showToast('SmartCard created ✓', 'success');
     } else {
       const err = await res.json();
       showToast(err.error || 'Failed to create card', 'error');
@@ -1327,7 +1506,6 @@ const CATEGORIES = [
 
 let selectedCategory = 'dining';
 let selectedCardIds = new Set();
-let allDbCards = [];
 
 async function loadRecommendPanel() {
   // Category pills
@@ -1346,20 +1524,21 @@ async function loadRecommendPanel() {
     });
   });
 
-  // Load card DB
+  // Card DB loaded in init(); if somehow missing, fetch now
   if (!allDbCards.length) {
     try {
       const res = await apiFetch('/recommend/cards');
       const data = await res.json();
       allDbCards = data.cards || [];
-      // Pre-select own card
       allDbCards.filter(c => c.isOwnCard).forEach(c => selectedCardIds.add(c.id));
     } catch {
-      // Fallback: show message
-      document.getElementById('my-cards-list').innerHTML = '<p style="color:var(--text2);font-size:13px">Card database not available — start the backend server.</p>';
+      document.getElementById('my-cards-list').innerHTML = '<p style="color:var(--text2);font-size:13px">Card database unavailable.</p>';
       return;
     }
   }
+
+  // Ensure linked cards are selected
+  allLinkedCards.forEach(lc => selectedCardIds.add(lc.cardId));
 
   renderMyCardsList();
 }

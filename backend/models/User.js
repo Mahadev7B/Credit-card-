@@ -17,6 +17,7 @@ const userSchema = new mongoose.Schema(
     totalCashback: { type: Number, default: 0 },
     lastLoginAt: { type: Date },
     kycStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+    linkedCards: [{ cardId: { type: String, required: true }, addedAt: { type: Date, default: Date.now } }],
   },
   { timestamps: true }
 );
