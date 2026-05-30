@@ -1,0 +1,257 @@
+GEOREWARDS — COMPLETE PRODUCT SUMMARY
+======================================
+
+
+THE PROBLEM
+-----------
+Most people carry 3-5 credit cards. Each card earns different rewards at
+different merchants. Nobody remembers which card to use where. Result —
+hundreds to thousands of dollars in rewards left on the table every year.
+Card benefits like dining credits and travel credits expire unused. Managing
+multiple cards, multiple statements, multiple apps is exhausting.
+
+
+THE SOLUTION
+------------
+GeoRewards is a smart card platform that connects all your existing credit
+cards, issues you one SmartCard to use everywhere, automatically routes each
+transaction to your best-performing card, and consolidates everything into
+one clear picture.
+
+
+THE SMARTCARD
+-------------
+A real Visa card issued by GeoRewards via Stripe Issuing. Available as
+virtual (instant) or physical (mailed by Stripe). User carries one card.
+SmartCard handles every transaction.
+
+Default cashback: 1.5% on everything.
+Source of cashback: Visa interchange. When SmartCard is used at any merchant,
+Visa pays GeoRewards roughly 1.5% of the transaction as interchange (a portion
+of the merchant's card processing fee). GeoRewards passes the full 1.5% to
+the user as cashback. No money is created — it flows from merchant processing
+fees through Visa to us to the user.
+
+
+HOW ROUTING WORKS
+-----------------
+User taps SmartCard at a restaurant. In the background, GeoRewards instantly
+checks all the user's linked cards to find the best option.
+
+The routing rule:
+Only route to a linked card if that card's reward rate minus SmartCard's 1.5%
+exceeds the 2.9% Stripe routing fee. Otherwise keep the transaction on
+SmartCard.
+
+Example — $120 restaurant bill:
+
+WITHOUT a better card:
+- SmartCard earns 1.5% = $1.80 cashback
+- No routing. Transaction stays on SmartCard.
+- User gets $1.80. GeoRewards earns $1.80 interchange, gives $1.80 to user.
+
+WITH Chase Freedom (5% dining this quarter):
+- Chase Freedom earns 5% = $6.00
+- Stripe routing fee = 2.9% x $120 + $0.30 = $3.78
+- Delta = $6.00 - $1.80 = $4.20 benefit from routing
+- $4.20 exceeds $3.78 routing cost — routing makes sense
+- GeoRewards silently charges Chase Freedom $120
+- $3.78 routing fee is deducted from user's GeoRewards rewards balance
+- User earns $6.00 from Chase Freedom
+- User earns $1.80 SmartCard cashback
+- User pays $3.78 routing fee from rewards balance
+- User nets $4.02 (vs $1.80 without routing)
+
+ECONOMICS FOR GEOREWARDS:
+- Earn interchange: $1.80
+- Pay Stripe routing: $3.78
+- Recover from user rewards balance: $3.78
+- Net: $1.80 profit — same as if no routing happened
+
+Routing is completely neutral for GeoRewards. We earn the same $1.80 
+whether we route or not. Routing is purely for the user's benefit.
+
+
+WHO PAYS THE ROUTING FEE
+------------------------
+The user pays it — not GeoRewards. It is deducted from their GeoRewards
+rewards balance (the 1.5% cashback they have been accumulating). The user
+always comes out ahead because the linked card earns more than the routing
+fee costs. If it doesn't, the algorithm doesn't route.
+
+
+CONNECTING CARDS — PLAID
+-------------------------
+Users connect their existing cards (Chase, Amex, Citi, any bank) via Plaid.
+Plaid is a trusted financial data service used by Venmo, Robinhood, and
+thousands of other apps.
+
+Connection flow: User taps Connect Chase inside GeoRewards. Chase's official
+app or website opens (OAuth). User logs in on Chase's own domain — never
+inside our app. Chase asks permission to share data. User approves. Done.
+GeoRewards never sees the user's bank credentials. Chase handles the login
+entirely.
+
+What Plaid gives us:
+- 12 months of transaction history across all connected cards
+- Real spending data by category and merchant
+- Statement credits applied (benefit usage tracking)
+- Account balances and credit limits
+
+
+THE $1,007 MOMENT
+-----------------
+The hook that makes people sign up instantly.
+
+User connects their cards via Plaid. We analyze 12 months of real
+transactions. We calculate what they actually earned versus what they could
+have earned using their best card for every purchase.
+
+They see: "You left $1,047 on the table in 2025."
+
+With a breakdown:
+- $340 lost on dining — used wrong card
+- $182 lost on groceries — used wrong card
+- $485 lost on travel — charged to debit card
+
+Real numbers. Their actual spending. Not estimates. This is the moment
+people immediately sign up.
+
+
+BENEFITS TRACKER
+----------------
+Every premium card has annual credits that go unused. Amex Platinum alone
+has over $1,500 in annual credits — most users use less than half.
+
+GeoRewards pulls benefit usage automatically from Plaid transaction data.
+Statement credits appear in Plaid as negative transactions. We detect and
+track them automatically.
+
+What we track:
+- Remaining balance on each credit
+- Expiry dates
+- Eligible merchants where credits apply
+- Urgency alerts as expiry approaches
+
+
+LOCATION ALERTS
+---------------
+Using iPhone GPS and iOS Core Location geofencing, GeoRewards alerts users
+when they are near a merchant where a card benefit applies or where a linked
+card significantly outperforms SmartCard.
+
+How it works:
+We maintain a database of benefit-eligible merchant locations across the
+USA built from OpenStreetMap (free). When user enters a 200-meter radius
+of an eligible merchant and stays for 3+ minutes (confirming they are
+there, not just passing), a notification fires.
+
+Example notification:
+"Shake Shack nearby — your Amex dining credit has $120 remaining.
+Expires in 23 days. Use your Amex Platinum here."
+
+Battery impact: minimal. iOS uses cell towers (not GPS) to monitor
+geofences in the background. Apple designed this specifically for low
+battery geofencing.
+
+Location permission: optional. The product works fully without it.
+Location alerts are a premium engagement layer, not the core product.
+
+
+CONSOLIDATED STATEMENT
+----------------------
+Every month GeoRewards generates one PDF covering all connected cards.
+
+Contents:
+- Every transaction across all cards in one list
+- Which card was used for each purchase
+- Rewards earned per transaction
+- What you could have earned with a better card (missed rewards)
+- Benefits used this month
+- Benefits remaining with expiry dates
+- Year to date totals
+- Card recommendations
+
+No more logging into 4 separate bank apps. One document. Complete picture.
+
+
+CARD RECOMMENDATIONS
+--------------------
+Based on real spending patterns from Plaid data, GeoRewards tells users
+exactly which cards to add or drop.
+
+Not generic advice. Specific to their actual spending.
+
+Example: "You spent $780/month on groceries last year. None of your current
+cards earn more than 2% there. Adding Amex Gold would earn you 4x points
+on groceries — that is $374 more per year just on groceries alone."
+
+Revenue model for recommendations: affiliate commissions. When a user
+applies for a recommended card through GeoRewards and gets approved,
+card issuers pay us $100-300 per approved application.
+
+
+ECONOMICS — HOW WE MAKE MONEY
+------------------------------
+Three revenue streams:
+
+1. SUBSCRIPTION — $9.99/month
+   User pays for full access to all features.
+
+2. INTERCHANGE — 0% kept (all passed to user as cashback)
+   We earn ~1.5% interchange on every SmartCard transaction.
+   We pass the full 1.5% to the user as cashback.
+   We keep zero from interchange.
+   This makes SmartCard more attractive and drives usage.
+
+3. AFFILIATE COMMISSIONS — $100-300 per approved card application
+   When users apply for recommended cards through GeoRewards.
+
+COSTS:
+- Plaid: ~$0.50 per connected account per month
+- Stripe Issuing: small per-transaction fee
+- Infrastructure (server, database): ~$200/month
+- OpenStreetMap merchant database: free
+
+UNIT ECONOMICS AT 1,000 USERS (avg 3 cards each):
+Revenue: $9,990 subscription + affiliate commissions
+Plaid cost: ~$1,500/month
+Other costs: ~$400/month
+Net before affiliates: ~$8,090/month
+Profitable from early stage.
+
+
+TECHNOLOGY STACK
+----------------
+- Stripe Issuing: SmartCard issuance, virtual and physical
+- Plaid + OAuth: secure card and bank account connection
+- MongoDB with geospatial indexing: merchant location matching
+- OpenStreetMap / Overpass API: free merchant location database
+- iOS Core Location: background geofencing for location alerts
+- Claude API: statement parsing, personalized recommendations
+- Node.js / Express: backend API
+- Render: cloud hosting
+
+
+WHAT MAKES IT DIFFERENT
+-----------------------
+MaxRewards: tells you which card to use — generic advice, no card issued.
+Copilot / Monarch: shows spending across accounts — budgeting focused,
+no rewards optimization.
+NerdWallet: generic card recommendations — not based on your actual spending.
+
+GeoRewards does all of the above plus:
+- Issues a real card (SmartCard) that works everywhere
+- Automatically routes to your best card behind the scenes
+- Funds routing costs from user's own rewards (zero loss to GeoRewards)
+- Location alerts at point of purchase in real time
+- Personalized analysis from real Plaid transaction data
+- 1.5% cashback on everything SmartCard handles
+
+
+IN ONE SENTENCE
+---------------
+GeoRewards issues you one smart card, connects all your existing cards,
+automatically uses whichever earns the most on every purchase, and shows
+you exactly how much money you were leaving on the table before.
+
