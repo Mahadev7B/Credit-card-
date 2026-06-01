@@ -2205,7 +2205,7 @@ async function openRoutingCardModal() {
   document.getElementById('rc-step-details').style.display = 'none';
   document.getElementById('rc-card-search').value = '';
   document.getElementById('rc-amex-note').style.display = 'none';
-  document.getElementById('routing-card-modal').classList.add('active');
+  document.getElementById('routing-card-modal').classList.add('show');
 
   if (!allDbCards.length) {
     try {
@@ -2218,7 +2218,7 @@ async function openRoutingCardModal() {
 }
 
 function closeRoutingCardModal() {
-  document.getElementById('routing-card-modal').classList.remove('active');
+  document.getElementById('routing-card-modal').classList.remove('show');
   if (_rcCardElement) { try { _rcCardElement.destroy(); } catch(_) {} _rcCardElement = null; }
 }
 
