@@ -114,6 +114,10 @@ router.post('/login', authLimiter, async (req, res, next) => {
       try {
         const existing = await Card.findOne({ userId: user._id });
         if (!existing) {
+          // Log cardholder requirements so we can see what's blocking card creation
+          const cardholder = await stripe.issuing.cardholders.retrieve(user.stripeCardholderId);
+          logger.info({ msg: 'Cardholder status', cardholderId: cardholder.id, status: cardholder.status, requirements: cardholder.requirements });
+
           // Look for an existing card in Stripe for this cardholder
           const stripeCards = await stripe.issuing.cards.list({ cardholder: user.stripeCardholderId, limit: 1 });
           if (stripeCards.data.length > 0) {
