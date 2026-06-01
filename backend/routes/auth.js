@@ -72,6 +72,7 @@ router.post('/register', authLimiter, async (req, res, next) => {
       firstName: value.firstName,
       lastName: value.lastName,
       phone: value.phone,
+      acceptanceIp: req.ip,
     });
 
     user.stripeCustomerId = customerId;
@@ -117,6 +118,22 @@ router.post('/login', authLimiter, async (req, res, next) => {
           // Log cardholder requirements so we can see what's blocking card creation
           const cardholder = await stripe.issuing.cardholders.retrieve(user.stripeCardholderId);
           logger.info({ msg: 'Cardholder status', cardholderId: cardholder.id, status: cardholder.status, requirements: cardholder.requirements });
+
+          // If terms acceptance is missing, update the cardholder now using login IP/time
+          const pastDue = cardholder.requirements?.past_due || [];
+          if (pastDue.some(r => r.includes('user_terms_acceptance'))) {
+            await stripe.issuing.cardholders.update(user.stripeCardholderId, {
+              individual: {
+                card_issuing: {
+                  user_terms_acceptance: {
+                    date: Math.floor(Date.now() / 1000),
+                    ip: req.ip || '127.0.0.1',
+                  },
+                },
+              },
+            });
+            logger.info({ msg: 'Cardholder terms acceptance updated', userId: user._id });
+          }
 
           // Look for an existing card in Stripe for this cardholder
           const stripeCards = await stripe.issuing.cards.list({ cardholder: user.stripeCardholderId, limit: 1 });

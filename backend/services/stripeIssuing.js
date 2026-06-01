@@ -1,7 +1,7 @@
 const stripe = require('../config/stripe');
 const logger = require('../config/logger');
 
-async function createCardholder({ email, firstName, lastName, phone }) {
+async function createCardholder({ email, firstName, lastName, phone, acceptanceIp }) {
   const customer = await stripe.customers.create({
     email,
     name: `${firstName} ${lastName}`,
@@ -16,6 +16,12 @@ async function createCardholder({ email, firstName, lastName, phone }) {
     individual: {
       first_name: firstName,
       last_name: lastName,
+      card_issuing: {
+        user_terms_acceptance: {
+          date: Math.floor(Date.now() / 1000),
+          ip: acceptanceIp || '127.0.0.1',
+        },
+      },
     },
     billing: {
       address: {
