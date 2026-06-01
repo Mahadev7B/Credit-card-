@@ -3,6 +3,8 @@ const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const rateLimit = require('express-rate-limit');
 const User = require('../models/User');
+const Card = require('../models/Card');
+const stripe = require('../config/stripe');
 const stripeIssuingService = require('../services/stripeIssuing');
 const { authenticate } = require('../middleware/auth');
 const logger = require('../config/logger');
@@ -106,6 +108,51 @@ router.post('/login', authLimiter, async (req, res, next) => {
 
     user.lastLoginAt = new Date();
     await user.save();
+
+    // Sync SmartCard from Stripe on every login — creates DB record if missing
+    if (user.stripeCardholderId) {
+      try {
+        const existing = await Card.findOne({ userId: user._id });
+        if (!existing) {
+          // Look for an existing card in Stripe for this cardholder
+          const stripeCards = await stripe.issuing.cards.list({ cardholder: user.stripeCardholderId, limit: 1 });
+          if (stripeCards.data.length > 0) {
+            const sc = stripeCards.data[0];
+            await Card.create({
+              userId: user._id,
+              stripeCardId: sc.id,
+              stripeCardholderId: user.stripeCardholderId,
+              last4: sc.last4,
+              expMonth: sc.exp_month,
+              expYear: sc.exp_year,
+              brand: sc.brand || 'Visa',
+              type: sc.type,
+              status: sc.status === 'active' ? 'active' : 'inactive',
+              nickname: 'SmartCard',
+            });
+            logger.info({ msg: 'SmartCard synced from Stripe on login', userId: user._id, cardId: sc.id });
+          } else {
+            // No card in Stripe yet — create one
+            const sc = await stripeIssuingService.createCard({ cardholderId: user.stripeCardholderId, type: 'virtual' });
+            await Card.create({
+              userId: user._id,
+              stripeCardId: sc.id,
+              stripeCardholderId: user.stripeCardholderId,
+              last4: sc.last4,
+              expMonth: sc.exp_month,
+              expYear: sc.exp_year,
+              brand: sc.brand || 'Visa',
+              type: 'virtual',
+              status: 'active',
+              nickname: 'SmartCard',
+            });
+            logger.info({ msg: 'SmartCard auto-issued on login', userId: user._id, cardId: sc.id });
+          }
+        }
+      } catch (e) {
+        logger.warn({ msg: 'SmartCard sync failed on login (non-fatal)', userId: user._id, err: e.message });
+      }
+    }
 
     const token = signToken(user._id);
     logger.info({ msg: 'User logged in', userId: user._id });
