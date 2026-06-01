@@ -24,10 +24,12 @@ One SmartCard (Stripe Issuing Visa) that automatically routes each transaction t
 - Users only net more when routing fires — algorithm never routes at a loss
 
 ### Stripe Issuing Balance (Float)
-- GeoRewards maintains a Stripe Issuing balance funded from GeoRewards' own bank account
-- USERS NEVER LOAD MONEY — this is GeoRewards' operational float
-- PaymentIntents from Chase routing replenish the balance as they settle (2-3 days)
-- Users just use SmartCard and pay their Chase bill normally
+- GeoRewards maintains a Stripe Issuing balance funded from routing PaymentIntent revenue
+- When Chase is charged via PaymentIntent, that money lands in GeoRewards' Stripe payments balance, which feeds the Issuing balance automatically — Stripe supports this natively
+- USERS NEVER DO ACH — USERS NEVER LOAD MONEY — no user-facing funding step ever
+- GeoRewards seeds the Issuing balance once as an operational setup (invisible to users)
+- After that, routing PaymentIntents keep the balance self-sustaining
+- Users just get the card and use it. Done.
 
 ### Amex
 - Amex cards CANNOT be used for routing — network rules prohibit it
