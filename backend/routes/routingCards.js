@@ -95,11 +95,17 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// Remove a routing card
+// Remove a routing card — detaches from Stripe so no trace remains
 router.delete('/:id', async (req, res, next) => {
   try {
     const card = await RoutingCard.findOne({ _id: req.params.id, userId: req.user._id });
     if (!card) return res.status(404).json({ error: 'Card not found' });
+
+    try {
+      await stripe.paymentMethods.detach(card.stripePaymentMethodId);
+    } catch (stripeErr) {
+      logger.warn({ msg: 'Stripe detach failed (continuing)', pmId: card.stripePaymentMethodId, err: stripeErr.message });
+    }
 
     card.isActive = false;
     await card.save();
