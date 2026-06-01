@@ -3,6 +3,7 @@ const stripe = require('../config/stripe');
 const rewardsRouter = require('../services/rewardsRouter');
 const fallbackLogic = require('../services/fallbackLogic');
 const pushNotifications = require('../services/pushNotifications');
+const { findBestRoutingCard } = require('../services/routingEngine');
 const Card = require('../models/Card');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
@@ -116,21 +117,73 @@ async function handleTransactionCreated(transaction) {
     stripeAuthorizationId: transaction.authorization,
   });
 
-  if (existingTx) {
-    existingTx.stripeTransactionId = transaction.id;
-    existingTx.status = 'captured';
-    existingTx.capturedAt = new Date(transaction.created * 1000);
+  if (!existingTx) return;
+
+  existingTx.stripeTransactionId = transaction.id;
+  existingTx.status = 'captured';
+  existingTx.capturedAt = new Date(transaction.created * 1000);
+  await existingTx.save();
+
+  // Apply SmartCard cashback to user balance
+  if (existingTx.cashbackAmount > 0) {
+    await User.findByIdAndUpdate(existingTx.userId, {
+      $inc: {
+        rewardsBalance: existingTx.cashbackAmount,
+        totalCashback: existingTx.cashbackAmount,
+      },
+    });
+  }
+
+  // Attempt to route to best linked card
+  const routingDecision = await findBestRoutingCard({
+    userId: existingTx.userId,
+    amountCents: existingTx.amount,
+    mccCode: existingTx.mccCode,
+  });
+
+  if (!routingDecision) return;
+
+  const user = await User.findById(existingTx.userId);
+  if (!user || !user.stripeCustomerId) return;
+
+  try {
+    const pi = await stripe.paymentIntents.create({
+      amount: existingTx.amount,
+      currency: (existingTx.currency || 'usd').toLowerCase(),
+      customer: user.stripeCustomerId,
+      payment_method: routingDecision.routingCard.stripePaymentMethodId,
+      confirm: true,
+      off_session: true,
+      metadata: {
+        smartcardTxId: existingTx._id.toString(),
+        mccCode: existingTx.mccCode || '',
+        merchantName: existingTx.merchantName || '',
+        routedCardProductId: routingDecision.routingCard.cardProductId,
+      },
+    });
+
+    // Deduct routing fee from user's rewards balance
+    await User.findByIdAndUpdate(existingTx.userId, {
+      $inc: { rewardsBalance: -routingDecision.routingCostDollars },
+    });
+
+    existingTx.isRouted = true;
+    existingTx.routedToCardId = routingDecision.routingCard._id;
+    existingTx.routingPaymentIntentId = pi.id;
+    existingTx.routingFeeDollars = routingDecision.routingCostDollars;
+    existingTx.estimatedRoutingRewardDollars = routingDecision.estimatedRewardDollars;
     await existingTx.save();
 
-    // Apply rewards to user balance
-    if (existingTx.cashbackAmount > 0) {
-      await User.findByIdAndUpdate(existingTx.userId, {
-        $inc: {
-          rewardsBalance: existingTx.cashbackAmount,
-          totalCashback: existingTx.cashbackAmount,
-        },
-      });
-    }
+    logger.info({
+      msg: 'Transaction routed',
+      txId: existingTx._id,
+      paymentIntentId: pi.id,
+      routingFeeDollars: routingDecision.routingCostDollars,
+      estimatedRewardDollars: routingDecision.estimatedRewardDollars,
+    });
+  } catch (routingErr) {
+    // Routing failure is non-fatal — user keeps SmartCard cashback, routing just didn't happen
+    logger.error({ msg: 'Routing failed — keeping SmartCard cashback', txId: existingTx._id, err: routingErr });
   }
 }
 

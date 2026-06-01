@@ -16,6 +16,7 @@ const rewardsRoutes = require('./routes/rewards');
 const recommendRoutes = require('./routes/recommend');
 const usersRoutes = require('./routes/users');
 const adminRoutes = require('./routes/admin');
+const routingCardsRoutes = require('./routes/routingCards');
 const { runNightlyHealthCheck } = require('./jobs/nightlyHealthCheck');
 const { refreshCardRates } = require('./services/claudeRewardsUpdater');
 
@@ -77,6 +78,12 @@ app.use('/api/rewards', rewardsRoutes);
 app.use('/api/recommend', recommendRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/routing-cards', routingCardsRoutes);
+
+// Expose Stripe publishable key to frontend (safe — publishable key is not secret)
+app.get('/api/config', (req, res) => {
+  res.json({ stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '' });
+});
 
 app.get('/health', (req, res) => res.json({
   status: 'ok',

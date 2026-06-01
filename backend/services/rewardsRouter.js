@@ -97,4 +97,4 @@ function getMCCRatesTable() {
   };
 }
 
-module.exports = { calculateRewards, getMCCRatesTable };
+module.exports = { calculateRewards, getMCCRatesTable, MCC_REWARDS_TABLE };

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://universal-smart-card.onrender.com http://localhost:3000; img-src 'self' data:; font-src 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://js.stripe.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://universal-smart-card.onrender.com http://localhost:3000 https://api.stripe.com; img-src 'self' data: https://*.stripe.com; font-src 'self'; frame-src https://js.stripe.com https://hooks.stripe.com;">
 <title>Dashboard — Universal SmartCard</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -660,6 +660,9 @@ main {
     <button class="nav-item" data-panel="statements">
       <span class="icon">📄</span> Statements
     </button>
+    <button class="nav-item" data-panel="routing">
+      <span class="icon">🔀</span> Routing Cards
+    </button>
   </nav>
   <div class="sidebar-bottom">
     <div id="admin-link-wrap" style="display:none;margin-bottom:8px">
@@ -868,8 +871,84 @@ main {
       </div>
     </div>
 
+    <!-- Routing Cards Panel -->
+    <div class="panel" id="panel-routing">
+      <div class="section-title">Cards for Routing</div>
+      <p style="color:var(--text2);font-size:13px;margin-bottom:20px;line-height:1.5">
+        When you pay with your SmartCard, GeoRewards automatically routes the charge
+        to whichever card earns you the most rewards — if the reward beats our routing cost.
+        The routing fee comes out of your rewards balance, so you always come out ahead.
+      </p>
+
+      <div class="overview-card" style="margin-bottom:20px;padding:16px 20px">
+        <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">How it works</div>
+        <div style="font-size:13px;color:var(--dark);line-height:1.6">
+          1. You pay with SmartCard at Domino's (MCC 5814 — Fast Food)<br>
+          2. We check your routing cards — your Chase earns 3% on dining<br>
+          3. 3% − 1.5% SmartCard base = 1.5% extra. On $20 that's $0.30 extra<br>
+          4. Routing fee (2.9% + $0.30 = $0.88) vs. benefit ($0.30) → no route<br>
+          5. On larger amounts, routing wins — e.g. $200 pizza: $2.22 extra vs $6.08 fee → still no<br>
+          6. Your card earns 5% on travel: $200 flight → $7 extra vs $6.08 fee → <strong>routed ✓</strong>
+        </div>
+      </div>
+
+      <div id="routing-cards-list">
+        <div class="loading-wrap"><span class="spinner"></span> Loading…</div>
+      </div>
+
+      <button class="btn-primary" id="btn-add-routing-card" style="margin-top:20px;width:100%" onclick="openRoutingCardModal()">
+        + Add Card for Routing
+      </button>
+    </div>
+
   </div><!-- end page-content -->
 </main>
+
+<!-- Routing Card Modal -->
+<div class="modal-overlay" id="routing-card-modal">
+  <div class="modal" style="max-width:500px">
+    <!-- Step 1: pick card product -->
+    <div id="rc-step-pick">
+      <h2>Which card are you adding?</h2>
+      <p style="color:var(--text2);font-size:13px;margin-bottom:12px">Pick the product — we use this to know your rewards rates.</p>
+      <input type="text" id="rc-card-search" placeholder="Search — Chase, Amex, Citi…"
+        oninput="filterRcCards(this.value)"
+        style="width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;outline:none;margin-bottom:10px"/>
+      <div id="rc-card-list" style="max-height:300px;overflow-y:auto;border:1.5px solid #eee;border-radius:10px;background:#fff"></div>
+      <p id="rc-amex-note" style="display:none;color:#b71c1c;font-size:12px;margin-top:10px;padding:8px 12px;background:#fdecea;border-radius:8px">
+        Amex cards can't be used for routing (network rules). You can still add them for recommendations in the "Which Card?" tab.
+      </p>
+      <div class="modal-actions" style="margin-top:16px">
+        <button class="btn-cancel" onclick="closeRoutingCardModal()" style="width:100%">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Step 2: nickname + Stripe Elements -->
+    <div id="rc-step-details" style="display:none">
+      <h2>Add Card Details</h2>
+      <div id="rc-picked-banner" style="background:#f9f9f9;border-radius:10px;padding:12px 14px;margin-bottom:18px;display:flex;align-items:center;gap:10px">
+        <div style="font-size:24px">💳</div>
+        <div>
+          <div style="font-weight:700;font-size:14px" id="rc-picked-name"></div>
+          <div style="font-size:12px;color:var(--text2)" id="rc-picked-issuer"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Nickname <span style="color:var(--red)">*</span></label>
+        <input type="text" id="rc-nickname" placeholder="e.g. Chase travel card" maxlength="50" />
+      </div>
+      <div class="form-group">
+        <label>Card Number, Expiry &amp; CVC</label>
+        <div id="rc-card-element" style="border:1.5px solid #ddd;border-radius:8px;padding:12px 14px;background:#fff;min-height:44px"></div>
+      </div>
+      <div id="rc-card-error" style="color:#b71c1c;font-size:13px;margin-top:6px;min-height:18px"></div>
+      <div class="modal-actions" style="margin-top:20px">
+        <button class="btn-cancel" onclick="rcBackToPick()">Back</button>
+        <button class="btn-primary" id="rc-submit-btn" style="flex:1" onclick="submitRoutingCard()">Add Card</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Add Card Modal -->
 <div class="modal-overlay" id="add-card-modal">
@@ -968,6 +1047,8 @@ main {
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
+<!-- Stripe.js — must load before our script -->
+<script src="https://js.stripe.com/v3/"></script>
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
@@ -1072,6 +1153,7 @@ function loadPanelData(panel) {
   if (panel === 'whichcard') loadRecommendPanel();
   if (panel === 'rewards') loadRewards();
   if (panel === 'statements') loadStatements();
+  if (panel === 'routing') loadRoutingCards();
 }
 
 // ── Init ──
@@ -2063,6 +2145,208 @@ window.toggleCard = toggleCard;
 window.openPhysicalModal = openPhysicalModal;
 window.closePhysicalModal = closePhysicalModal;
 window.requestPhysicalCard = requestPhysicalCard;
+
+// ── Routing Cards ──
+let _stripeInstance = null;
+let _rcCardElement = null;
+let _rcClientSecret = null;
+let _rcPickedProduct = null;
+
+async function getStripe() {
+  if (_stripeInstance) return _stripeInstance;
+  const res = await apiFetch('/config');
+  const { stripePublishableKey } = await res.json();
+  _stripeInstance = Stripe(stripePublishableKey);
+  return _stripeInstance;
+}
+
+async function loadRoutingCards() {
+  const list = document.getElementById('routing-cards-list');
+  list.innerHTML = '<div class="loading-wrap"><span class="spinner"></span> Loading…</div>';
+  try {
+    const res = await apiFetch('/routing-cards');
+    const { routingCards } = await res.json();
+    if (!routingCards || routingCards.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-icon">🔀</div><p>No routing cards yet. Add one to start maximizing rewards.</p></div>';
+      return;
+    }
+    list.innerHTML = routingCards.map(rc => {
+      const brandUpper = (rc.brand || 'card').toUpperCase().slice(0, 4);
+      return `
+      <div class="linked-card-row" style="margin-bottom:10px">
+        <div class="linked-card-icon">${brandUpper}</div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:14px">${rc.nickname}</div>
+          <div style="font-size:12px;color:var(--text2)">•••• ${rc.last4} &nbsp;|&nbsp; expires ${rc.expMonth}/${rc.expYear}</div>
+        </div>
+        <button class="btn-remove" onclick="removeRoutingCard('${rc._id}')">Remove</button>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    list.innerHTML = '<div class="empty-state"><p>Could not load routing cards.</p></div>';
+  }
+}
+
+async function removeRoutingCard(id) {
+  if (!confirm('Remove this routing card?')) return;
+  try {
+    await apiFetch('/routing-cards/' + id, { method: 'DELETE' });
+    showToast('Card removed', 'success');
+    loadRoutingCards();
+  } catch (e) {
+    showToast('Failed to remove card', 'error');
+  }
+}
+
+async function openRoutingCardModal() {
+  _rcPickedProduct = null;
+  _rcClientSecret = null;
+  document.getElementById('rc-step-pick').style.display = '';
+  document.getElementById('rc-step-details').style.display = 'none';
+  document.getElementById('rc-card-search').value = '';
+  document.getElementById('rc-amex-note').style.display = 'none';
+  document.getElementById('routing-card-modal').classList.add('active');
+
+  if (!allDbCards.length) {
+    try {
+      const res = await apiFetch('/recommend/cards');
+      const data = await res.json();
+      allDbCards = data.cards || [];
+    } catch (_) {}
+  }
+  populateRcCardList('');
+}
+
+function closeRoutingCardModal() {
+  document.getElementById('routing-card-modal').classList.remove('active');
+  if (_rcCardElement) { try { _rcCardElement.destroy(); } catch(_) {} _rcCardElement = null; }
+}
+
+function populateRcCardList(query) {
+  const q = query.toLowerCase();
+  const filtered = allDbCards.filter(c =>
+    !q || c.name.toLowerCase().includes(q) || (c.issuer || '').toLowerCase().includes(q)
+  );
+  const el = document.getElementById('rc-card-list');
+  if (!filtered.length) { el.innerHTML = '<div style="padding:16px;color:var(--text2);font-size:13px;text-align:center">No cards found</div>'; return; }
+  el.innerHTML = filtered.map(c => {
+    const isAmex = (c.network || '').toLowerCase() === 'amex';
+    const amexBadge = isAmex ? ' <span style="font-size:10px;color:#b71c1c;font-weight:700;background:#fdecea;padding:1px 6px;border-radius:4px">No routing</span>' : '';
+    return `<div class="card-list-item" onclick="rcPickCard('${c.id}')">
+      <div>
+        <div class="cli-name">${c.name}${amexBadge}</div>
+        <div class="cli-meta">${c.issuer || ''} · ${c.network || ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterRcCards(q) {
+  populateRcCardList(q);
+}
+
+async function rcPickCard(productId) {
+  const product = allDbCards.find(c => c.id === productId);
+  if (!product) return;
+
+  if ((product.network || '').toLowerCase() === 'amex') {
+    document.getElementById('rc-amex-note').style.display = '';
+    return;
+  }
+
+  _rcPickedProduct = product;
+  document.getElementById('rc-picked-name').textContent = product.name;
+  document.getElementById('rc-picked-issuer').textContent = product.issuer || '';
+  document.getElementById('rc-nickname').value = '';
+  document.getElementById('rc-card-error').textContent = '';
+
+  document.getElementById('rc-step-pick').style.display = 'none';
+  document.getElementById('rc-step-details').style.display = '';
+
+  // Get SetupIntent client secret
+  try {
+    const res = await apiFetch('/routing-cards/setup-intent', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to initialize');
+    _rcClientSecret = data.clientSecret;
+  } catch (e) {
+    showToast('Could not start card setup: ' + e.message, 'error');
+    rcBackToPick();
+    return;
+  }
+
+  // Mount Stripe Elements
+  const stripe = await getStripe();
+  const elements = stripe.elements();
+  _rcCardElement = elements.create('card', {
+    style: {
+      base: { fontSize: '15px', color: '#1a1a1a', fontFamily: 'inherit', '::placeholder': { color: '#aaa' } },
+      invalid: { color: '#b71c1c' },
+    },
+  });
+  _rcCardElement.mount('#rc-card-element');
+  _rcCardElement.on('change', e => {
+    document.getElementById('rc-card-error').textContent = e.error ? e.error.message : '';
+  });
+}
+
+function rcBackToPick() {
+  if (_rcCardElement) { try { _rcCardElement.destroy(); } catch(_) {} _rcCardElement = null; }
+  _rcClientSecret = null;
+  document.getElementById('rc-step-details').style.display = 'none';
+  document.getElementById('rc-step-pick').style.display = '';
+}
+
+async function submitRoutingCard() {
+  const nickname = document.getElementById('rc-nickname').value.trim();
+  if (!nickname) { document.getElementById('rc-card-error').textContent = 'Nickname is required.'; return; }
+  if (!_rcCardElement || !_rcClientSecret || !_rcPickedProduct) return;
+
+  const btn = document.getElementById('rc-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  try {
+    const stripe = await getStripe();
+    const { setupIntent, error } = await stripe.confirmCardSetup(_rcClientSecret, {
+      payment_method: { card: _rcCardElement, billing_details: { name: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : nickname } },
+    });
+
+    if (error) {
+      document.getElementById('rc-card-error').textContent = error.message;
+      btn.disabled = false;
+      btn.textContent = 'Add Card';
+      return;
+    }
+
+    const res = await apiFetch('/routing-cards', {
+      method: 'POST',
+      body: JSON.stringify({
+        paymentMethodId: setupIntent.payment_method,
+        cardProductId: _rcPickedProduct.id,
+        nickname,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Save failed');
+
+    showToast('Routing card added!', 'success');
+    closeRoutingCardModal();
+    loadRoutingCards();
+  } catch (e) {
+    document.getElementById('rc-card-error').textContent = e.message;
+    btn.disabled = false;
+    btn.textContent = 'Add Card';
+  }
+}
+
+window.openRoutingCardModal = openRoutingCardModal;
+window.closeRoutingCardModal = closeRoutingCardModal;
+window.filterRcCards = filterRcCards;
+window.rcPickCard = rcPickCard;
+window.rcBackToPick = rcBackToPick;
+window.submitRoutingCard = submitRoutingCard;
+window.removeRoutingCard = removeRoutingCard;
 
 // ── Start ──
 init();
