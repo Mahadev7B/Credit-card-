@@ -759,14 +759,26 @@ main {
     <!-- Which Card? panel -->
     <div class="panel" id="panel-whichcard">
       <p style="font-size:14px;color:var(--text2);margin-bottom:20px">
-        Select a spending category and the cards you own — we'll rank them by cashback rate.
+        Search a merchant or pick a category — we'll show which of your cards earns the most there.
         Rates for third-party cards are <strong style="color:var(--orange)">estimated</strong> from bank advertising;
         only your Universal SmartCard rate is <strong style="color:var(--green)">confirmed</strong>.
       </p>
+
+      <!-- Merchant search -->
+      <div style="margin-bottom:20px">
+        <div style="position:relative">
+          <input type="text" id="merchant-search-input" placeholder="Where are you shopping? e.g. Patel Brothers, Domino's, Shell…"
+            oninput="onMerchantSearch(this.value)"
+            style="width:100%;padding:12px 44px 12px 16px;border:1.5px solid #ddd;border-radius:10px;font-size:14px;outline:none"/>
+          <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:18px;pointer-events:none">🔍</span>
+        </div>
+        <div id="merchant-detect-badge" style="display:none;margin-top:8px;font-size:13px;padding:7px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;color:#166534"></div>
+      </div>
+
       <div class="recommend-wrap">
         <!-- Left: inputs -->
         <div class="rec-panel">
-          <h3>I'm spending on…</h3>
+          <h3>Category</h3>
           <div class="category-pills" id="cat-pills"></div>
 
           <h3>My cards (select ones you own)</h3>
@@ -1738,6 +1750,45 @@ const CATEGORIES = [
 
 let selectedCategory = 'dining';
 let selectedCardIds = new Set();
+
+const MERCHANT_CATEGORY_MAP = [
+  { category: 'dining', keywords: ['restaurant','pizza','burger','cafe','coffee','sushi','taco','sandwich','domino','mcdonald','starbucks','chipotle','subway','wendy','kfc','popeyes','chick-fil','shake shack','five guys','dunkin','panera','olive garden','applebee','denny','ihop','waffle','noodle','grill','bistro','eatery','diner','bbq','steakhouse','pho','ramen','thai','indian food','chinese food','mexican food','italian food','buffet'] },
+  { category: 'groceries', keywords: ['grocery','groceries','market','whole foods','kroger','safeway','trader joe','aldi','costco','walmart','target','publix','wegmans','sprouts','fresh market','food lion','stop shop','giant','meijer','heb','patel brothers','desi','h-mart','india bazaar','indian grocery','asian market','halal','99 ranch','mitsuwa','super bazaar'] },
+  { category: 'gas', keywords: ['shell','bp','exxon','chevron','mobil','sunoco','speedway','gas','fuel','citgo','marathon','valero','pilot','love\'s','kwik trip','wawa','sheetz','7-eleven','casey'] },
+  { category: 'travel', keywords: ['hotel','marriott','hilton','hyatt','airbnb','vrbo','delta','united','american airlines','southwest','jetblue','spirit','frontier','hertz','enterprise','avis','budget','national','alamo','uber','lyft','amtrak','carnival','royal caribbean','expedia','booking','priceline','kayak','airports','motel','inn','resort','suites'] },
+  { category: 'online', keywords: ['amazon','ebay','etsy','shopify','alibaba','newegg','bestbuy','apple store','google play'] },
+  { category: 'subscriptions', keywords: ['netflix','spotify','hulu','disney','apple tv','hbo','youtube','paramount','peacock','amazon prime','adobe','microsoft 365','dropbox','zoom'] },
+  { category: 'healthcare', keywords: ['pharmacy','cvs','walgreens','rite aid','hospital','clinic','urgent care','doctor','dental','vision','optometrist','lab','quest','labcorp'] },
+];
+
+function detectMerchantCategory(query) {
+  if (!query || query.length < 2) return null;
+  const q = query.toLowerCase();
+  for (const entry of MERCHANT_CATEGORY_MAP) {
+    if (entry.keywords.some(k => q.includes(k))) return entry.category;
+  }
+  return null;
+}
+
+function onMerchantSearch(value) {
+  const badge = document.getElementById('merchant-detect-badge');
+  const detected = detectMerchantCategory(value);
+  if (detected && value.trim().length > 1) {
+    const cat = CATEGORIES.find(c => c.id === detected);
+    badge.style.display = '';
+    badge.innerHTML = `✓ Detected category: <strong>${cat ? cat.icon + ' ' + cat.label : detected}</strong> — showing best cards below`;
+    // Auto-select the detected category
+    selectedCategory = detected;
+    document.querySelectorAll('#cat-pills .pill').forEach(p => {
+      p.classList.toggle('selected', p.dataset.cat === detected);
+    });
+    renderMyCardsList();
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+window.onMerchantSearch = onMerchantSearch;
 
 async function loadRecommendPanel() {
   // Category pills
