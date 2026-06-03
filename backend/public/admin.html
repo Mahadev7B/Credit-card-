@@ -162,7 +162,7 @@ tr:hover td { background: #fafef0; }
 
 const API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
   ? 'http://localhost:3000/api'
-  : 'https://universal-smart-card.onrender.com/api';
+  : location.origin + '/api';
 
 let token = sessionStorage.getItem('sc_token') || localStorage.getItem('sc_token');
 if (!token) { location.href = 'login.html'; }

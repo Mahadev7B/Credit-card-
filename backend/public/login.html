@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://universal-smart-card.onrender.com; img-src 'self' data:; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:3000; img-src 'self' data:; form-action 'self';">
 <meta name="referrer" content="no-referrer">
 <title>Sign In — Universal SmartCard</title>
 <style>
@@ -375,7 +375,7 @@ footer a:hover { color: var(--primary-dark); }
 
   const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? 'http://localhost:3000/api'
-    : 'https://universal-smart-card.onrender.com/api';
+    : window.location.origin + '/api';
 
   // ── Client-side rate limiting ──
   const MAX_ATTEMPTS = 5;
