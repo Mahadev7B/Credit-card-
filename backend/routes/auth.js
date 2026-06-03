@@ -206,7 +206,8 @@ router.post('/refresh', authenticate, (req, res) => {
 router.post('/push-token', authenticate, async (req, res, next) => {
   try {
     const { token, platform } = req.body;
-    if (!token || !platform) return res.status(400).json({ error: 'token and platform required' });
+    if (!token || typeof token !== 'string' || token.length > 512) return res.status(400).json({ error: 'Invalid token' });
+    if (!['ios', 'android'].includes(platform)) return res.status(400).json({ error: 'platform must be ios or android' });
 
     const user = req.user;
     const exists = user.pushTokens.some((t) => t.token === token);

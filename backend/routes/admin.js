@@ -1,4 +1,5 @@
 const router = require('express').Router();
+const mongoose = require('mongoose');
 const { authenticate, requireRole } = require('../middleware/auth');
 const User = require('../models/User');
 const Card = require('../models/Card');
@@ -28,7 +29,7 @@ router.get('/users', async (req, res, next) => {
     const page = parseInt(req.query.page) || 1;
     const limit = Math.min(parseInt(req.query.limit) || 25, 100);
     const skip = (page - 1) * limit;
-    const search = req.query.search || '';
+    const search = (req.query.search || '').slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     const query = search
       ? { $or: [

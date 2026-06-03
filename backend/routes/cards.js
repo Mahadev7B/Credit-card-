@@ -158,6 +158,9 @@ router.post('/:cardId/wallet/provision', async (req, res, next) => {
     if (card.walletProvisioned) return res.status(409).json({ error: 'Card already in wallet' });
 
     const { certificates, nonce, nonceSignature } = req.body;
+    if (!Array.isArray(certificates) || !certificates.length || typeof nonce !== 'string' || typeof nonceSignature !== 'string') {
+      return res.status(400).json({ error: 'Invalid wallet provisioning data' });
+    }
     const passData = await walletProvisioningService.provisionAppleWallet({
       card,
       user: req.user,

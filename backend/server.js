@@ -55,7 +55,7 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10kb' }));
 // Reject requests missing X-Requested-With to block cross-site form submissions
-app.use('/api/auth', (req, res, next) => {
+app.use('/api', (req, res, next) => {
   if (req.method !== 'GET' && req.headers['x-requested-with'] !== 'XMLHttpRequest') {
     return res.status(403).json({ error: 'Forbidden' });
   }
@@ -81,6 +81,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/routing-cards', routingCardsRoutes);
 
 // Expose Stripe publishable key to frontend (safe — publishable key is not secret)
+// Rate-limited via the global /api/ limiter above
 app.get('/api/config', (req, res) => {
   res.json({ stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '' });
 });

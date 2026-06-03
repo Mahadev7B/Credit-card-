@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const Joi = require('joi');
+const mongoose = require('mongoose');
 const { authenticate } = require('../middleware/auth');
 const statementGenerator = require('../services/statementGenerator');
 
@@ -61,7 +62,11 @@ router.get('/summary', async (req, res, next) => {
 
     const startDate = req.query.startDate ? new Date(req.query.startDate) : defaultStart;
     const endDate = req.query.endDate ? new Date(req.query.endDate) : defaultEnd;
-    const cardId = req.query.cardId;
+    if (isNaN(startDate) || isNaN(endDate)) return res.status(400).json({ error: 'Invalid date range' });
+    if (endDate < startDate) return res.status(400).json({ error: 'endDate must be after startDate' });
+
+    const cardId = req.query.cardId && mongoose.Types.ObjectId.isValid(req.query.cardId)
+      ? req.query.cardId : undefined;
 
     const summary = await statementGenerator.getSummary({
       userId: req.user._id,
