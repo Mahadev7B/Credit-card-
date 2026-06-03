@@ -96,9 +96,23 @@ app.get('/health', (req, res) => res.json({
 // Serve the website (lives in backend/public so it deploys with the backend)
 const publicDir = path.join(__dirname, 'public');
 app.use(express.static(publicDir));
-// Catch-all: serve index.html for any non-API route
+
+// Unknown /api routes → JSON 404 (don't serve HTML to API clients/bots)
+app.all('/api/*', (req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
+// Catch-all for page routes: serve real 404 for unknown paths, homepage otherwise.
+// This stops bots from getting 200 OK on every probed URL (/wp-admin, /.env, etc.)
+const KNOWN_PAGES = new Set([
+  '/', '/index.html', '/login.html', '/signup.html',
+  '/dashboard.html', '/admin.html', '/privacy.html', '/terms.html',
+]);
 app.get('*', (req, res) => {
-  res.sendFile(path.join(publicDir, 'index.html'));
+  if (KNOWN_PAGES.has(req.path)) {
+    return res.sendFile(path.join(publicDir, req.path === '/' ? 'index.html' : req.path));
+  }
+  res.status(404).sendFile(path.join(publicDir, '404.html'));
 });
 
 // Error handler

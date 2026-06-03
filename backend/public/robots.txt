@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /$
+Allow: /index.html
+Allow: /login.html
+Allow: /signup.html
+Allow: /privacy.html
+Allow: /terms.html
+Disallow: /api/
+Disallow: /dashboard.html
+Disallow: /admin.html
+Disallow: /webhooks/
+
+Sitemap: https://georewardsusa.com/sitemap.xml
