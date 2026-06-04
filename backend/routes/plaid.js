@@ -21,14 +21,19 @@ router.post('/link-token', requirePlaid, async (req, res, next) => {
       country_codes: ['US'],
       language: 'en',
     };
-    if (process.env.PLAID_REDIRECT_URI) {
+    // Only include redirect_uri for non-sandbox environments where it's registered
+    const env = process.env.PLAID_ENV || 'sandbox';
+    if (process.env.PLAID_REDIRECT_URI && env !== 'sandbox') {
       config.redirect_uri = process.env.PLAID_REDIRECT_URI;
     }
     const response = await plaidClient.linkTokenCreate(config);
     res.json({ linkToken: response.data.link_token });
   } catch (err) {
-    logger.error({ err }, 'Plaid linkTokenCreate failed');
-    next(err);
+    // Extract the actual Plaid error message so it's visible to the client
+    const plaidMsg = err?.response?.data?.error_message || err?.response?.data?.display_message;
+    logger.error({ err, plaidMsg }, 'Plaid linkTokenCreate failed');
+    const status = err?.response?.status || err?.status || 500;
+    res.status(status).json({ error: plaidMsg || err.message || 'Failed to create Plaid link token' });
   }
 });
 
