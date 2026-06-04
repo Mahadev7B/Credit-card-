@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://js.stripe.com; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:3000 https://api.stripe.com https://cdn.jsdelivr.net; img-src 'self' data: https://*.stripe.com; font-src 'self'; frame-src https://js.stripe.com https://hooks.stripe.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://js.stripe.com https://cdn.plaid.com; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:3000 https://api.stripe.com https://cdn.jsdelivr.net https://production.plaid.com https://sandbox.plaid.com https://cdn.plaid.com; img-src 'self' data: https://*.stripe.com; font-src 'self'; frame-src https://js.stripe.com https://hooks.stripe.com https://cdn.plaid.com;">
 <title>Dashboard — Universal SmartCard</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -617,6 +617,70 @@ main {
 .stmt-chart-wrap { background: var(--white); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 24px; }
 .stmt-chart-wrap .chart-title { font-size: 13px; font-weight: 700; color: var(--dark); margin-bottom: 14px; }
 
+/* ── Connected Banks (Plaid) ── */
+.bank-item {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px 20px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.bank-icon {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #1565C0, #0D47A1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  color: #fff;
+  font-weight: 800;
+}
+.bank-name { font-size: 15px; font-weight: 700; }
+.bank-accounts { font-size: 12px; color: var(--text2); margin-top: 3px; line-height: 1.5; }
+.analysis-box {
+  background: linear-gradient(135deg, #1B5E20, #0D47A1);
+  border-radius: 20px;
+  padding: 32px 36px;
+  color: #fff;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+.analysis-box::before {
+  content: '';
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 220px; height: 220px;
+  background: radial-gradient(circle, rgba(181,211,0,0.18) 0%, transparent 70%);
+  pointer-events: none;
+}
+.analysis-box .ab-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.65; font-weight: 600; margin-bottom: 6px; }
+.analysis-box .ab-amount { font-size: 56px; font-weight: 900; color: #B5D300; line-height: 1; letter-spacing: -2px; }
+.analysis-box .ab-sub { font-size: 14px; opacity: 0.75; margin-top: 8px; }
+.ab-breakdown { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-top: 20px; }
+.ab-cat {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+}
+.ab-cat .abc-label { font-size: 12px; color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+.ab-cat .abc-extra { font-size: 22px; font-weight: 800; color: var(--green); margin-top: 4px; }
+.ab-cat .abc-spend { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.analysis-disclaimer {
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #5d4037;
+  margin-top: 16px;
+  line-height: 1.5;
+}
+
 /* ── Responsive ── */
 @media (max-width: 700px) {
   aside { display: none; }
@@ -662,6 +726,9 @@ main {
     </button>
     <button class="nav-item" data-panel="routing">
       <span class="icon">🔀</span> Routing Cards
+    </button>
+    <button class="nav-item" data-panel="plaid">
+      <span class="icon">🏦</span> Connected Banks
     </button>
   </nav>
   <div class="sidebar-bottom">
@@ -913,6 +980,41 @@ main {
       </button>
     </div>
 
+    <!-- Connected Banks (Plaid) panel -->
+    <div class="panel" id="panel-plaid">
+      <p style="font-size:14px;color:var(--text2);margin-bottom:20px;line-height:1.5">
+        Connect your existing bank accounts and credit cards via Plaid so GeoRewards can analyze your spending and show you exactly how much more you'd earn with SmartCard routing.
+        <strong>We never see your bank password</strong> — you authenticate directly on your bank's website.
+      </p>
+
+      <!-- $1,007 Analysis -->
+      <div id="plaid-analysis-wrap" style="display:none">
+        <div class="analysis-box" id="analysis-results">
+          <div style="position:relative;z-index:1">
+            <div class="ab-label">Extra you'd earn with GeoRewards over the past 12 months</div>
+            <div class="ab-amount" id="ab-extra">—</div>
+            <div class="ab-sub" id="ab-sub"></div>
+          </div>
+        </div>
+        <div class="ab-breakdown" id="ab-breakdown"></div>
+        <div class="analysis-disclaimer">
+          <strong>How this is calculated:</strong> We compare what a 1% flat cash-back card earns across your transactions vs. what GeoRewards SmartCard would earn at our enhanced category rates (3% dining &amp; travel, 2% groceries, gas, online, healthcare, 1.5% everything else). Your actual results will vary based on card eligibility and routing fees.
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-bottom:14px">Your Connected Banks</div>
+      <div id="plaid-banks-list">
+        <div class="loading-wrap"><span class="spinner"></span> Loading…</div>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap">
+        <button class="btn-primary" id="btn-connect-bank" onclick="openPlaidLink()">+ Connect Bank Account</button>
+        <button class="btn-primary" id="btn-run-analysis" onclick="runAnalysis()" style="background:var(--dark);color:var(--white);display:none">
+          📊 Run $1,007 Analysis
+        </button>
+      </div>
+    </div>
+
   </div><!-- end page-content -->
 </main>
 
@@ -1063,6 +1165,8 @@ main {
 <script src="https://js.stripe.com/v3/"></script>
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Plaid Link -->
+<script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
 
 <script>
 (function () {
@@ -1166,6 +1270,7 @@ function loadPanelData(panel) {
   if (panel === 'rewards') loadRewards();
   if (panel === 'statements') loadStatements();
   if (panel === 'routing') loadRoutingCards();
+  if (panel === 'plaid') loadPlaidPanel();
 }
 
 // ── Init ──
@@ -2399,8 +2504,183 @@ window.rcBackToPick = rcBackToPick;
 window.submitRoutingCard = submitRoutingCard;
 window.removeRoutingCard = removeRoutingCard;
 
+// ── Connected Banks (Plaid) ──
+const CATEGORY_ICONS = { dining: '🍽️', groceries: '🛒', travel: '✈️', gas: '⛽', online: '💻', subscriptions: '🎬', healthcare: '🏥', general: '💳' };
+
+async function loadPlaidPanel() {
+  const listEl = document.getElementById('plaid-banks-list');
+  listEl.innerHTML = '<div class="loading-wrap"><span class="spinner"></span> Loading…</div>';
+  try {
+    const res = await apiFetch('/plaid/items');
+    if (!res.ok) {
+      if (res.status === 503) {
+        listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🏦</div><p>Plaid integration coming soon — connect your bank once approved.</p></div>';
+        return;
+      }
+      throw new Error('Failed');
+    }
+    const { items } = await res.json();
+    if (!items || !items.length) {
+      listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🏦</div><p>No banks connected yet. Click "Connect Bank Account" to get started.</p></div>';
+      document.getElementById('btn-run-analysis').style.display = 'none';
+      document.getElementById('plaid-analysis-wrap').style.display = 'none';
+      return;
+    }
+    document.getElementById('btn-run-analysis').style.display = '';
+    listEl.innerHTML = items.map(item => {
+      const initials = (item.institutionName || 'BK').slice(0, 2).toUpperCase();
+      const acctList = (item.accounts || []).map(a =>
+        `${a.name}${a.mask ? ' ••' + a.mask : ''} (${a.subtype || a.type})`
+      ).join(', ');
+      return `
+        <div class="bank-item">
+          <div class="bank-icon">${initials}</div>
+          <div style="flex:1">
+            <div class="bank-name">${item.institutionName || 'Unknown Bank'}</div>
+            <div class="bank-accounts">${acctList || 'Loading accounts…'}</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:4px">Connected ${new Date(item.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>
+          </div>
+          <button class="btn-remove" onclick="disconnectBank('${item._id}')">Disconnect</button>
+        </div>
+      `;
+    }).join('');
+  } catch {
+    listEl.innerHTML = '<div class="empty-state"><p>Could not load connected banks.</p></div>';
+  }
+}
+
+async function disconnectBank(itemId) {
+  if (!confirm('Disconnect this bank? Your transaction history will be removed from GeoRewards.')) return;
+  try {
+    const res = await apiFetch('/plaid/items/' + itemId, { method: 'DELETE' });
+    if (res.ok) {
+      showToast('Bank disconnected', 'success');
+      loadPlaidPanel();
+    } else {
+      showToast('Failed to disconnect', 'error');
+    }
+  } catch { showToast('Network error', 'error'); }
+}
+
+async function openPlaidLink() {
+  const btn = document.getElementById('btn-connect-bank');
+  btn.disabled = true;
+  btn.textContent = 'Opening…';
+
+  try {
+    const res = await apiFetch('/plaid/link-token', { method: 'POST' });
+    if (!res.ok) {
+      const err = await res.json();
+      if (res.status === 503) {
+        showToast('Plaid integration not yet configured — coming soon', 'error');
+      } else {
+        showToast(err.error || 'Could not start bank connection', 'error');
+      }
+      return;
+    }
+    const { linkToken } = await res.json();
+
+    // Store for OAuth return page
+    sessionStorage.setItem('plaid_link_token', linkToken);
+
+    if (typeof Plaid === 'undefined') {
+      showToast('Plaid Link could not load. Check your connection.', 'error');
+      return;
+    }
+
+    const handler = Plaid.create({
+      token: linkToken,
+      onSuccess: async (publicToken) => {
+        btn.textContent = 'Saving…';
+        try {
+          const exchRes = await apiFetch('/plaid/exchange', {
+            method: 'POST',
+            body: JSON.stringify({ publicToken }),
+          });
+          if (!exchRes.ok) throw new Error('Exchange failed');
+          sessionStorage.removeItem('plaid_link_token');
+          showToast('Bank connected! ✓', 'success');
+          loadPlaidPanel();
+        } catch {
+          showToast('Failed to save bank connection', 'error');
+        }
+      },
+      onExit: (err) => {
+        if (err) showToast(err.display_message || 'Bank connection cancelled', 'error');
+      },
+    });
+
+    handler.open();
+  } catch {
+    showToast('Network error', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '+ Connect Bank Account';
+  }
+}
+
+async function runAnalysis() {
+  const btn = document.getElementById('btn-run-analysis');
+  const wrap = document.getElementById('plaid-analysis-wrap');
+  btn.disabled = true;
+  btn.textContent = '⏳ Analyzing…';
+  wrap.style.display = '';
+
+  document.getElementById('ab-extra').textContent = '—';
+  document.getElementById('ab-sub').textContent = 'Fetching up to 12 months of transactions…';
+  document.getElementById('ab-breakdown').innerHTML = '';
+
+  try {
+    const res = await apiFetch('/plaid/analyze');
+    const data = await res.json();
+
+    if (!data.analyzed) {
+      document.getElementById('ab-extra').textContent = '—';
+      document.getElementById('ab-sub').textContent = data.reason || 'No data available';
+      return;
+    }
+
+    const { summary, byCategory } = data;
+    document.getElementById('ab-extra').textContent = '$' + summary.extraRewards.toFixed(2);
+    document.getElementById('ab-sub').textContent =
+      `Analyzed ${summary.transactionCount.toLocaleString()} transactions · $${summary.totalSpend.toFixed(0)} spent · ` +
+      `$${summary.smartcardRewards.toFixed(2)} with GeoRewards vs $${summary.baselineRewards.toFixed(2)} with a 1% card`;
+
+    document.getElementById('ab-breakdown').innerHTML = byCategory.map(cat => `
+      <div class="ab-cat">
+        <div class="abc-label">${CATEGORY_ICONS[cat.category] || '💳'} ${cat.category.charAt(0).toUpperCase() + cat.category.slice(1)}</div>
+        <div class="abc-extra">+$${cat.extra.toFixed(2)}</div>
+        <div class="abc-spend">${cat.count} txns · $${cat.spend.toFixed(0)} spend</div>
+      </div>
+    `).join('');
+
+    showToast('Analysis complete ✓', 'success');
+  } catch {
+    showToast('Analysis failed', 'error');
+    wrap.style.display = 'none';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📊 Run $1,007 Analysis';
+  }
+}
+
+window.openPlaidLink = openPlaidLink;
+window.disconnectBank = disconnectBank;
+window.runAnalysis = runAnalysis;
+
 // ── Start ──
-init();
+// Auto-navigate to Connected Banks panel if returning from Plaid OAuth
+if (new URLSearchParams(location.search).get('plaid') === 'success') {
+  history.replaceState({}, '', location.pathname);
+  // Will navigate after init completes
+}
+
+init().then(() => {
+  if (new URLSearchParams(location.search).get('plaid') === 'success') {
+    document.querySelector('[data-panel="plaid"]').click();
+    showToast('Bank connected! ✓', 'success');
+  }
+});
 
 })();
 </script>

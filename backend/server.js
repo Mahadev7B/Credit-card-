@@ -17,6 +17,7 @@ const recommendRoutes = require('./routes/recommend');
 const usersRoutes = require('./routes/users');
 const adminRoutes = require('./routes/admin');
 const routingCardsRoutes = require('./routes/routingCards');
+const plaidRoutes = require('./routes/plaid');
 const { runNightlyHealthCheck } = require('./jobs/nightlyHealthCheck');
 const { refreshCardRates } = require('./services/claudeRewardsUpdater');
 
@@ -79,6 +80,7 @@ app.use('/api/recommend', recommendRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/routing-cards', routingCardsRoutes);
+app.use('/api/plaid', plaidRoutes);
 
 // Expose Stripe publishable key to frontend (safe — publishable key is not secret)
 // Rate-limited via the global /api/ limiter above
@@ -107,6 +109,7 @@ app.all('/api/*', (req, res) => {
 const KNOWN_PAGES = new Set([
   '/', '/index.html', '/login.html', '/signup.html',
   '/dashboard.html', '/admin.html', '/privacy.html', '/terms.html',
+  '/plaid-oauth-return.html',
 ]);
 app.get('*', (req, res) => {
   if (KNOWN_PAGES.has(req.path)) {
