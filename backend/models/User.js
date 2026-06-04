@@ -24,6 +24,8 @@ const userSchema = new mongoose.Schema(
       color: { type: String, match: /^#[0-9A-Fa-f]{6}$/ },
       addedAt: { type: Date, default: Date.now },
     }],
+    passwordResetToken: { type: String, select: false },
+    passwordResetExpires: { type: Date, select: false },
   },
   { timestamps: true }
 );

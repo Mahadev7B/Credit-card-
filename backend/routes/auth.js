@@ -1,12 +1,14 @@
 const router = require('express').Router();
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
+const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const User = require('../models/User');
 const Card = require('../models/Card');
 const stripe = require('../config/stripe');
 const stripeIssuingService = require('../services/stripeIssuing');
 const { authenticate } = require('../middleware/auth');
+const { sendPasswordReset } = require('../services/mailer');
 const logger = require('../config/logger');
 
 // Strict rate limits on auth endpoints — 10 attempts per 15 min per IP
@@ -189,6 +191,68 @@ router.post('/login', authLimiter, async (req, res, next) => {
         kycStatus: user.kycStatus,
       },
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Forgot password — always responds with same message to prevent email enumeration ──
+router.post('/forgot-password', authLimiter, async (req, res, next) => {
+  const GENERIC_OK = { message: 'If that email is registered, you will receive a reset link shortly.' };
+  try {
+    const email = (req.body.email || '').trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      return res.status(400).json({ error: 'Valid email required' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user || !user.isActive) return res.json(GENERIC_OK);
+
+    // Generate a cryptographically random token; store its SHA-256 hash in DB
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+    user.passwordResetToken = tokenHash;
+    user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    await user.save();
+
+    const appUrl = process.env.APP_URL || 'https://georewardsusa.com';
+    const resetUrl = `${appUrl}/reset-password.html?token=${rawToken}`;
+
+    await sendPasswordReset(user.email, resetUrl);
+    logger.info({ msg: 'Password reset requested', userId: user._id });
+
+    res.json(GENERIC_OK);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Reset password ──
+router.post('/reset-password', authLimiter, async (req, res, next) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || typeof token !== 'string') return res.status(400).json({ error: 'Token is required' });
+    if (!password || typeof password !== 'string') return res.status(400).json({ error: 'Password is required' });
+    if (password.length < 10 || password.length > 128) {
+      return res.status(400).json({ error: 'Password must be 10–128 characters' });
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const user = await User.findOne({
+      passwordResetToken: tokenHash,
+      passwordResetExpires: { $gt: new Date() },
+    }).select('+passwordHash +passwordResetToken +passwordResetExpires');
+
+    if (!user) return res.status(400).json({ error: 'Reset link is invalid or has expired' });
+
+    user.passwordHash = password; // pre-save hook will hash it
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+
+    logger.info({ msg: 'Password reset completed', userId: user._id });
+    res.json({ message: 'Password updated. You can now sign in.' });
   } catch (err) {
     next(err);
   }

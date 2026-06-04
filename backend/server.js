@@ -109,7 +109,7 @@ app.all('/api/*', (req, res) => {
 const KNOWN_PAGES = new Set([
   '/', '/index.html', '/login.html', '/signup.html',
   '/dashboard.html', '/admin.html', '/privacy.html', '/terms.html',
-  '/plaid-oauth-return.html',
+  '/plaid-oauth-return.html', '/forgot-password.html', '/reset-password.html',
 ]);
 app.get('*', (req, res) => {
   if (KNOWN_PAGES.has(req.path)) {
